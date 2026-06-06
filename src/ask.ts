@@ -13,7 +13,7 @@ import {
   wakeDevice,
 } from "./lib/companion-extras";
 import { setText } from "@bharper/atv-js";
-import { resolveAppName } from "./lib/deep-links";
+import { loadCachedApps, resolveAppName } from "./lib/deep-links";
 import { playContent } from "./lib/play-flow";
 import { SpotifyNotConfiguredError, playPlaylistOnTV } from "./lib/spotify";
 
@@ -58,7 +58,8 @@ async function pressKey(key: RemoteKey): Promise<void> {
 }
 
 async function openApp(appName: string): Promise<void> {
-  const resolved = resolveAppName(appName);
+  const cached = await loadCachedApps();
+  const resolved = resolveAppName(appName, cached?.apps ?? {});
   if (!resolved) {
     await showHUD(`❓ Don't know the app “${appName}” — try the Launch Apple TV App command`);
     return;
