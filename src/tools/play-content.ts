@@ -38,6 +38,11 @@ function parseAiResponse(raw: string): { app?: string; url?: string | null } | n
   }
 }
 
+/**
+ * Open a specific show or movie on the Apple TV. Resolves the title to a streaming
+ * deep link when possible (Netflix, Apple TV+), otherwise opens the streaming app
+ * so the user can search there. Use this whenever the user names a show or movie.
+ */
 export default async function (input: Input): Promise<string> {
   const requested = input.app ? resolveAppName(input.app) : null;
 

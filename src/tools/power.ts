@@ -8,6 +8,9 @@ type Input = {
   action: "sleep" | "wake";
 };
 
+/**
+ * Put the Apple TV to sleep or wake it up.
+ */
 export default async function (input: Input): Promise<string> {
   try {
     return await withConnection(async (conn) => {

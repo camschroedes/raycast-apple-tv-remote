@@ -88,12 +88,17 @@ function ManualEntryForm() {
           <Action.SubmitForm
             title="Continue to Pairing"
             icon={Icon.Link}
-            onSubmit={(values: { name: string; address: string }) => {
+            onSubmit={(values: { name: string; address: string; port: string }) => {
               if (!values.address.trim()) {
                 showToast({ style: Toast.Style.Failure, title: "IP address is required" });
                 return;
               }
-              push(<PairForm device={deviceFromManualEntry(values.name.trim(), values.address.trim())} />);
+              const port = Number(values.port.trim() || "49152");
+              if (!Number.isInteger(port) || port < 1 || port > 65535) {
+                showToast({ style: Toast.Style.Failure, title: "Port must be a number between 1 and 65535" });
+                return;
+              }
+              push(<PairForm device={deviceFromManualEntry(values.name.trim(), values.address.trim(), port)} />);
             }}
           />
         </ActionPanel>
@@ -102,6 +107,12 @@ function ManualEntryForm() {
       <Form.Description text="Use this if network discovery is blocked (VPNs, segmented Wi-Fi). Find the address on the Apple TV under Settings → Network." />
       <Form.TextField id="address" title="IP Address" placeholder="192.168.1.42" />
       <Form.TextField id="name" title="Name" placeholder="Living Room" />
+      <Form.TextField
+        id="port"
+        title="Companion Port"
+        placeholder="49152"
+        info="Apple TVs use a port in the 49152–49155 range for the Companion protocol. If pairing fails with the default, try 49153 or 49154."
+      />
     </Form>
   );
 }

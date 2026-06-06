@@ -16,6 +16,21 @@
       "mode": "view"
     },
     {
+      "name": "ask",
+      "title": "Ask Apple TV",
+      "subtitle": "Apple TV",
+      "description": "One-off natural-language commands: pause, open Netflix, play a show.",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "pause · open Netflix · play Severance",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "setup",
       "title": "Set up Apple TV",
       "subtitle": "Apple TV",
@@ -74,6 +89,7 @@
     }
   ],
   "ai": {
+    "instructions": "You control the user's Apple TV. For playback/navigation requests (pause, play, up, back, home, volume) call remote-key with the matching key — 'pause' and 'play' both map to play_pause. When the user names an app, call launch-app. When the user names a show or movie, call play-content (include the app if they named one). For sleep/wake/'turn off'/'turn on' call power. Never invent bundle IDs or deep-link URLs; the tools handle resolution.",
     "evals": [
       {
         "input": "@apple-tv-remote pause",

@@ -32,13 +32,14 @@ export async function getSelectedDeviceOrNull(): Promise<AppleTVDevice | null> {
 
 /**
  * Build a device record from a manually entered IP address, for networks
- * where mDNS discovery is blocked. Ports are the Companion/AirPlay defaults.
+ * where mDNS discovery is blocked. The Companion port varies per device
+ * (49152–49155), so it's user-overridable.
  */
-export function deviceFromManualEntry(name: string, address: string): AppleTVDevice {
+export function deviceFromManualEntry(name: string, address: string, port = 49152): AppleTVDevice {
   return {
     name: name || "Apple TV",
     address,
-    port: 49152,
+    port,
     airplayPort: 7000,
     identifier: `manual-${address}`,
     model: "unknown",
