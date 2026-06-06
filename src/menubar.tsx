@@ -7,6 +7,13 @@ import { appSwitcher, controlCenter, launchApp, skipBy, sleepDevice, wakeDevice 
 import { getSelectedDeviceOrNull } from "./lib/devices";
 import { loadCachedApps } from "./lib/deep-links";
 
+/**
+ * Menu-bar remote. macOS menus are the only surface Raycast extensions get in
+ * the status bar (rows of text+icon; every click closes the menu), so this
+ * lays the remote out as rows: d-pad keys first, then playback, apps, power.
+ * For continuous navigation the first item opens the visual remote view.
+ */
+
 async function runKey(key: RemoteKey): Promise<void> {
   try {
     await withConnection((conn) => sendKey(conn, key));
@@ -23,10 +30,6 @@ async function run(action: Parameters<typeof withConnection>[0]): Promise<void> 
   }
 }
 
-async function openCommand(name: string): Promise<void> {
-  await launchCommand({ name, type: LaunchType.UserInitiated });
-}
-
 export default function Command() {
   const { data: device, isLoading } = usePromise(getSelectedDeviceOrNull);
   const { data: cachedApps } = usePromise(loadCachedApps);
@@ -40,16 +43,45 @@ export default function Command() {
       tooltip={device ? `Apple TV: ${device.name}` : "Apple TV Remote"}
     >
       <MenuBarExtra.Item
-        title={device ? `Open Remote — ${device.name}` : "Set Up Apple TV"}
+        title={device ? "Open Full Remote" : "Set up Apple TV"}
+        subtitle={device?.name}
         icon={Icon.GameController}
-        onAction={() => void openCommand(device ? "remote" : "setup")}
+        onAction={() => void launchCommand({ name: device ? "remote" : "setup", type: LaunchType.UserInitiated })}
       />
+
+      <MenuBarExtra.Section title="Navigate">
+        <MenuBarExtra.Item title="Up" icon={Icon.ChevronUp} onAction={() => void runKey(RemoteKey.Up)} />
+        <MenuBarExtra.Item title="Down" icon={Icon.ChevronDown} onAction={() => void runKey(RemoteKey.Down)} />
+        <MenuBarExtra.Item title="Left" icon={Icon.ChevronLeft} onAction={() => void runKey(RemoteKey.Left)} />
+        <MenuBarExtra.Item title="Right" icon={Icon.ChevronRight} onAction={() => void runKey(RemoteKey.Right)} />
+        <MenuBarExtra.Item
+          title="Select"
+          icon={Icon.CircleFilled}
+          onAction={() => void runKey(RemoteKey.Select)}
+          alternate={<MenuBarExtra.Item title="Home" icon={Icon.House} onAction={() => void runKey(RemoteKey.Home)} />}
+        />
+        <MenuBarExtra.Item
+          title="Back"
+          icon={Icon.ArrowUturnLeft}
+          onAction={() => void runKey(RemoteKey.Menu)}
+          alternate={
+            <MenuBarExtra.Item
+              title="App Switcher"
+              icon={Icon.AppWindowGrid2x2}
+              onAction={() => void run(appSwitcher)}
+            />
+          }
+        />
+      </MenuBarExtra.Section>
 
       <MenuBarExtra.Section title="Playback">
         <MenuBarExtra.Item
           title="Play/Pause"
           icon={Icon.PlayFilled}
           onAction={() => void runKey(RemoteKey.PlayPause)}
+          alternate={
+            <MenuBarExtra.Item title="Control Center" icon={Icon.Switch} onAction={() => void run(controlCenter)} />
+          }
         />
         <MenuBarExtra.Item
           title="Skip Forward 10s"
@@ -65,15 +97,8 @@ export default function Command() {
         />
       </MenuBarExtra.Section>
 
-      <MenuBarExtra.Section title="Navigate">
-        <MenuBarExtra.Item title="Back" icon={Icon.ArrowUturnLeft} onAction={() => void runKey(RemoteKey.Menu)} />
-        <MenuBarExtra.Item title="Home" icon={Icon.House} onAction={() => void runKey(RemoteKey.Home)} />
-        <MenuBarExtra.Item title="App Switcher" icon={Icon.AppWindowGrid2x2} onAction={() => void run(appSwitcher)} />
-        <MenuBarExtra.Item title="Control Center" icon={Icon.Switch} onAction={() => void run(controlCenter)} />
-      </MenuBarExtra.Section>
-
       {topApps.length > 0 && (
-        <MenuBarExtra.Section title="Apps">
+        <MenuBarExtra.Section>
           <MenuBarExtra.Submenu title="Open App" icon={Icon.AppWindow}>
             {topApps.map(([bundleId, name]) => (
               <MenuBarExtra.Item key={bundleId} title={name} onAction={() => void run((c) => launchApp(c, bundleId))} />
@@ -82,9 +107,13 @@ export default function Command() {
         </MenuBarExtra.Section>
       )}
 
-      <MenuBarExtra.Section title="Power">
-        <MenuBarExtra.Item title="Sleep" icon={Icon.Moon} onAction={() => void run(sleepDevice)} />
-        <MenuBarExtra.Item title="Wake" icon={Icon.Sun} onAction={() => void run(wakeDevice)} />
+      <MenuBarExtra.Section>
+        <MenuBarExtra.Item
+          title="Sleep"
+          icon={Icon.Moon}
+          onAction={() => void run(sleepDevice)}
+          alternate={<MenuBarExtra.Item title="Wake" icon={Icon.Sun} onAction={() => void run(wakeDevice)} />}
+        />
       </MenuBarExtra.Section>
     </MenuBarExtra>
   );
