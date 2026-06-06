@@ -2,6 +2,8 @@
 
 Control your Apple TV from Raycast — no Python, no helper apps, no external installs. Pure TypeScript over Apple's Companion protocol.
 
+![The remote](metadata/apple-tv-remote-1.png)
+
 ## Features
 
 - **Apple TV Remote** — a clickable on-screen remote with a persistent connection (every press is instant): d-pad, select, back, home, context menu (hold-select), app switcher, Control Center, playback, ±10s skip, and typing into TV search fields.
@@ -10,6 +12,10 @@ Control your Apple TV from Raycast — no Python, no helper apps, no external in
 - **Menu bar** — quick taps (play/pause, skip, navigate, open apps, sleep/wake) and one-click access to the full remote.
 - **Per-key hotkey commands** — every remote function ships as its own command (most disabled by default): enable the ones you want and give them global hotkeys.
 - **AI tools** — `@apple-tv-remote pause`, `@apple-tv-remote play Rick and Morty on Netflix` from Raycast AI (requires Pro).
+
+| Every function, one search away | Remote in your menu bar |
+|---|---|
+| ![Commands](metadata/apple-tv-remote-2.png) | ![Menu bar](metadata/apple-tv-remote-3.png) |
 
 ## Setup
 
