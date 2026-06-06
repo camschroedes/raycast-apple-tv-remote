@@ -1,4 +1,8 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { LocalStorage, getPreferenceValues } from "@raycast/api";
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Deterministic title → streaming deep-link resolution via JustWatch's GraphQL
@@ -48,14 +52,29 @@ export interface ResolvedTitle {
   offers: StreamingOffer[];
 }
 
-function country(): string {
+let detectedCountry: string | null = null;
+
+/** Country from the extension preference, else auto-detected from the Mac's region setting. */
+async function country(): Promise<string> {
   const prefs = getPreferenceValues<{ country?: string }>();
-  const c = (prefs.country ?? "US").trim().toUpperCase();
-  return /^[A-Z]{2}$/.test(c) ? c : "US";
+  const fromPref = (prefs.country ?? "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(fromPref)) return fromPref;
+
+  if (!detectedCountry) {
+    try {
+      // macOS region, e.g. "en_AU" → AU
+      const { stdout } = await execFileAsync("/usr/bin/defaults", ["read", "-g", "AppleLocale"]);
+      detectedCountry = stdout.trim().match(/_([A-Z]{2})\b/)?.[1] ?? "US";
+    } catch {
+      detectedCountry = "US";
+    }
+  }
+  return detectedCountry;
 }
 
 export async function searchTitle(query: string): Promise<ResolvedTitle | null> {
-  const cacheKey = `atv:jw:${country()}:${query.toLowerCase()}`;
+  const region = await country();
+  const cacheKey = `atv:jw:${region}:${query.toLowerCase()}`;
   const cached = await LocalStorage.getItem<string>(cacheKey);
   if (cached) {
     const { value, at } = JSON.parse(cached) as { value: ResolvedTitle | null; at: number };
@@ -70,7 +89,7 @@ export async function searchTitle(query: string): Promise<ResolvedTitle | null> 
       variables: {
         first: 3,
         searchTitlesFilter: { searchQuery: query },
-        country: country(),
+        country: region,
         language: "en",
         filter: { bestOnly: true },
       },
@@ -121,6 +140,16 @@ export async function searchTitle(query: string): Promise<ResolvedTitle | null> 
   return value;
 }
 
+/** Whether an offer belongs to the provider the user explicitly asked for. */
+export function offerMatchesHint(offer: StreamingOffer, providerHint: string): boolean {
+  const hint = providerHint.trim().toLowerCase();
+  return (
+    offer.provider.technicalName.includes(hint.replace(/[^a-z0-9]/g, "")) ||
+    offer.provider.clearName.toLowerCase().includes(hint) ||
+    hint.includes(offer.provider.clearName.toLowerCase())
+  );
+}
+
 /**
  * Pick the best offer: an explicit provider request wins, then subscription
  * (FLATRATE) offers, then anything else.
@@ -129,13 +158,7 @@ export function pickOffer(resolved: ResolvedTitle, providerHint?: string): Strea
   if (resolved.offers.length === 0) return null;
 
   if (providerHint) {
-    const hint = providerHint.trim().toLowerCase();
-    const match = resolved.offers.find(
-      (o) =>
-        o.provider.technicalName.includes(hint.replace(/[^a-z0-9]/g, "")) ||
-        o.provider.clearName.toLowerCase().includes(hint) ||
-        hint.includes(o.provider.clearName.toLowerCase()),
-    );
+    const match = resolved.offers.find((o) => offerMatchesHint(o, providerHint));
     if (match) return match;
   }
 

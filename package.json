@@ -117,9 +117,8 @@
     {
       "name": "country",
       "title": "Streaming Country",
-      "description": "Two-letter country code used to find where shows are streaming (e.g. US, AU, GB).",
+      "description": "Two-letter country code used to find where shows are streaming (e.g. US, AU, GB). Leave blank to auto-detect from your Mac's region.",
       "type": "textfield",
-      "default": "US",
       "required": false
     },
     {

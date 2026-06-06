@@ -2,7 +2,7 @@ import { AppleTVConnection, getKeyboardFocusState, setText } from "@bharper/atv-
 import { withConnection } from "./connection";
 import { launchApp } from "./companion-extras";
 import { resolveAppName } from "./deep-links";
-import { pickOffer, searchTitle } from "./justwatch";
+import { offerMatchesHint, pickOffer, searchTitle } from "./justwatch";
 
 /**
  * The "play <title> [on <app>]" flow, shared by the AI tool and the Ask command.
@@ -89,8 +89,13 @@ export async function playContent(title: string, appHint?: string): Promise<Play
   const offer = resolvedTitle ? pickOffer(resolvedTitle, appHint) : null;
   const displayTitle = resolvedTitle?.title ?? title;
 
+  // Never silently open a different service than the one the user named —
+  // if their provider has no offer in this region, the universal-search flow
+  // lets them decide on screen instead.
+  const honorsHint = !appHint || (offer !== null && offerMatchesHint(offer, appHint));
+
   // 2. Direct deep link when the provider supports it on tvOS.
-  if (offer && !BROKEN_DEEP_LINK_PROVIDERS.has(offer.provider.technicalName)) {
+  if (offer && honorsHint && !BROKEN_DEEP_LINK_PROVIDERS.has(offer.provider.technicalName)) {
     const url = adaptUrlForTvos(offer.url, offer.provider.technicalName);
     await withConnection((conn) => launchApp(conn, url));
     return { ok: true, message: `Opening ${displayTitle} in ${offer.provider.clearName}` };
@@ -99,17 +104,21 @@ export async function playContent(title: string, appHint?: string): Promise<Play
   // 3. Universal Search flow (Netflix & friends, or unresolved titles).
   const typed = await withConnection((conn) => typeIntoUniversalSearch(conn, displayTitle));
   if (typed) {
-    const where = offer ? ` — it's on ${offer.provider.clearName}` : "";
+    const where = offer
+      ? honorsHint
+        ? ` — it's on ${offer.provider.clearName}`
+        : ` — heads up: in your region it's on ${offer.provider.clearName}`
+      : "";
     return {
       ok: true,
       message: `Typed “${displayTitle}” into Apple TV Search${where}. Pick the result on screen.`,
     };
   }
 
-  // 4. Last resort: open the most plausible app.
-  const bundleFromOffer = offer ? PROVIDER_BUNDLES[offer.provider.technicalName] : undefined;
+  // 4. Last resort: open the most plausible app (the user's named app wins).
+  const bundleFromOffer = offer && honorsHint ? PROVIDER_BUNDLES[offer.provider.technicalName] : undefined;
   const fromHint = appHint ? resolveAppName(appHint) : null;
-  const bundleId = bundleFromOffer ?? fromHint?.bundleId;
+  const bundleId = fromHint?.bundleId ?? bundleFromOffer;
   if (bundleId) {
     await withConnection((conn) => launchApp(conn, bundleId));
     const appName = offer?.provider.clearName ?? fromHint?.name ?? "the app";
