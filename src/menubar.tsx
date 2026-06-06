@@ -62,8 +62,6 @@ export default function Command() {
         />
         <MenuBarExtra.Item title="Skip Forward 10s" icon={Icon.Forward} onAction={fire("skip forward")} />
         <MenuBarExtra.Item title="Skip Back 10s" icon={Icon.Rewind} onAction={fire("skip back")} />
-        <MenuBarExtra.Item title="Volume Up" icon={Icon.SpeakerUp} onAction={fire("volume up")} />
-        <MenuBarExtra.Item title="Volume Down" icon={Icon.SpeakerDown} onAction={fire("volume down")} />
       </MenuBarExtra.Section>
 
       {topApps.length > 0 && (

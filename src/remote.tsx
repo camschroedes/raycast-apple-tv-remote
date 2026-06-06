@@ -255,9 +255,9 @@ export default function Remote() {
     B("b8"),
     // Row 5
     B("b9"),
-    { id: "voldown", icon: Icon.SpeakerDown, title: "Vol − · -", action: (c) => sendKey(c, RemoteKey.VolumeDown) },
+    { id: "prev", icon: Icon.RewindFilled, title: "Prev · [", action: (c) => sendKey(c, RemoteKey.Previous) },
     { id: "cc", icon: Icon.Switch, title: "Control Center · C", action: controlCenter },
-    { id: "volup", icon: Icon.SpeakerUp, title: "Vol + · =", action: (c) => sendKey(c, RemoteKey.VolumeUp) },
+    { id: "next", icon: Icon.ForwardFilled, title: "Next · ]", action: (c) => sendKey(c, RemoteKey.Next) },
     B("b10"),
     // Row 6
     B("b11"),

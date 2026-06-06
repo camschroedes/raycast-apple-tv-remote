@@ -8,6 +8,7 @@
  * Worth upstreaming to https://github.com/bsharper/atvjs.
  */
 import { AppleTVConnection, HidCommand, RemoteKey, sendKeyDown, sendKeyUp, sendKey } from "@bharper/atv-js";
+import { opackFloat } from "@bharper/atv-js/dist/opack";
 
 /** pyatv `is_url_or_scheme`: URLs and custom schemes deep-link, bundle IDs launch. */
 function isUrlOrScheme(value: string): boolean {
@@ -100,5 +101,6 @@ export async function channelDown(conn: AppleTVConnection): Promise<void> {
  * are unmapped upstream and would throw — this is the working path.
  */
 export async function skipBy(conn: AppleTVConnection, seconds: number): Promise<void> {
-  await conn.protocol.sendCommand("_mcc", { _mcc: 7, _skpS: seconds });
+  // opackFloat: the OPACK integer packer rejects negatives; pyatv sends _skpS as a float.
+  await conn.protocol.sendCommand("_mcc", { _mcc: 7, _skpS: opackFloat(seconds) });
 }
