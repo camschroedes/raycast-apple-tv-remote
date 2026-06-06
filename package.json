@@ -1,0 +1,131 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "apple-tv-remote",
+  "title": "Apple TV Remote",
+  "description": "Control your Apple TV over the local network — d-pad remote, app launcher, deep links, and AI commands. No external installs required.",
+  "icon": "command-icon.png",
+  "author": "camschroedes",
+  "categories": ["Media", "Applications"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "remote",
+      "title": "Apple TV Remote",
+      "subtitle": "Apple TV",
+      "description": "Full remote control — d-pad, playback, volume, and text input.",
+      "mode": "view"
+    },
+    {
+      "name": "setup",
+      "title": "Set up Apple TV",
+      "subtitle": "Apple TV",
+      "description": "Discover and pair with an Apple TV on your network.",
+      "mode": "view"
+    },
+    {
+      "name": "launch-app",
+      "title": "Launch Apple TV App",
+      "subtitle": "Apple TV",
+      "description": "Browse and open apps installed on your Apple TV.",
+      "mode": "view"
+    },
+    {
+      "name": "play-pause",
+      "title": "Play/Pause",
+      "subtitle": "Apple TV",
+      "description": "Toggle playback on your Apple TV.",
+      "mode": "no-view"
+    },
+    {
+      "name": "home",
+      "title": "Go to Home Screen",
+      "subtitle": "Apple TV",
+      "description": "Jump to the Apple TV home screen.",
+      "mode": "no-view"
+    },
+    {
+      "name": "menubar",
+      "title": "Apple TV Menu Bar",
+      "subtitle": "Apple TV",
+      "description": "Quick Apple TV controls from your menu bar.",
+      "mode": "menu-bar"
+    }
+  ],
+  "tools": [
+    {
+      "name": "remote-key",
+      "title": "Press Remote Key",
+      "description": "Press a button on the Apple TV remote: up, down, left, right, select, menu (back), home, play_pause, volume_up, volume_down, next, previous."
+    },
+    {
+      "name": "launch-app",
+      "title": "Launch App",
+      "description": "Open an app on the Apple TV by name, e.g. Netflix, YouTube, Disney+."
+    },
+    {
+      "name": "play-content",
+      "title": "Play Content",
+      "description": "Open a specific show or movie on the Apple TV, optionally in a specific streaming app. Resolves the title to a deep link when possible, otherwise opens the app."
+    },
+    {
+      "name": "power",
+      "title": "Power",
+      "description": "Put the Apple TV to sleep or wake it up."
+    }
+  ],
+  "ai": {
+    "evals": [
+      {
+        "input": "@apple-tv-remote pause",
+        "mocks": { "remote-key": "Pressed play_pause" },
+        "expected": [{ "callsTool": { "name": "remote-key", "arguments": { "key": "play_pause" } } }]
+      },
+      {
+        "input": "@apple-tv-remote open Netflix",
+        "mocks": { "launch-app": "Launched Netflix" },
+        "expected": [{ "callsTool": { "name": "launch-app", "arguments": { "app": "Netflix" } } }]
+      },
+      {
+        "input": "@apple-tv-remote play Rick and Morty on Netflix",
+        "mocks": { "play-content": "Opened Rick and Morty on Netflix" },
+        "expected": [{ "callsTool": { "name": "play-content" } }]
+      },
+      {
+        "input": "@apple-tv-remote put the tv to sleep",
+        "mocks": { "power": "Apple TV is going to sleep" },
+        "expected": [{ "callsTool": { "name": "power", "arguments": { "action": "sleep" } } }]
+      }
+    ]
+  },
+  "preferences": [
+    {
+      "name": "connectTimeout",
+      "title": "Connection Timeout",
+      "description": "How long commands wait to reach the Apple TV (milliseconds).",
+      "type": "textfield",
+      "default": "8000",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@bharper/atv-js": "0.3.4",
+    "@raycast/api": "^1.104.19",
+    "@raycast/utils": "^2.2.6"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
