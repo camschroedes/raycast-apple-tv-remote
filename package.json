@@ -122,6 +122,19 @@
       "required": false
     },
     {
+      "name": "searchAutomation",
+      "title": "Search Automation",
+      "description": "How far to go after typing a title into Apple TV Search. 'Open top result' stops on the title page so you pick the streaming app — pressing Play blindly can start the wrong provider.",
+      "type": "dropdown",
+      "default": "open",
+      "required": false,
+      "data": [
+        { "title": "Type the title only", "value": "type" },
+        { "title": "Open top result (recommended)", "value": "open" },
+        { "title": "Open and press Play (may pick the wrong app)", "value": "play" }
+      ]
+    },
+    {
       "name": "connectTimeout",
       "title": "Connection Timeout",
       "description": "How long commands wait to reach the Apple TV (milliseconds).",

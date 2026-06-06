@@ -1,4 +1,5 @@
-import { AppleTVConnection, getKeyboardFocusState, setText } from "@bharper/atv-js";
+import { AppleTVConnection, RemoteKey, getKeyboardFocusState, sendKey, setText } from "@bharper/atv-js";
+import { getPreferenceValues } from "@raycast/api";
 import { withConnection } from "./connection";
 import { launchApp } from "./companion-extras";
 import { resolveAppName } from "./deep-links";
@@ -51,25 +52,91 @@ function adaptUrlForTvos(url: string, technicalName: string): string {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// tvOS coalesces rapid keypresses into long-presses (pyatv #792) — keep gaps generous.
+const KEY_GAP_MS = 800;
+
+async function keyboardFocused(conn: AppleTVConnection): Promise<boolean> {
+  try {
+    return await getKeyboardFocusState(conn);
+  } catch {
+    return false;
+  }
+}
+
+export type SearchAutomation = "type" | "open" | "play";
+
+type SearchStage = "failed" | "typed" | "opened" | "played";
+
 /**
- * Launch tvOS universal Search, wait for its keyboard to focus (detected via
- * the Companion text-input session), and type the title. Returns true once the
- * text was verifiably delivered to the on-screen search field.
+ * Launch tvOS universal Search, type the title, then walk the focus-state
+ * machine toward playback. The keyboard-focus flag is the only feedback
+ * channel, and it gives us two verifiable transitions:
+ *  - Down flips focus → false: we verifiably left the keyboard into results.
+ *    (If it doesn't flip, that's the known tvOS single/zero-result quirk — bail
+ *    and leave the typed query on screen rather than pressing blind.)
+ *  - Select flips focus back → true: we hit a search *suggestion*, not a
+ *    poster — the query was refined, so descend again and re-select.
+ * After opening the top result, one more Select hits the detail page's
+ * default-focused Play/Open button. Playback itself isn't verifiable without
+ * the MRP channel, so messaging stays honest about that.
  */
-async function typeIntoUniversalSearch(conn: AppleTVConnection, title: string): Promise<boolean> {
+async function searchAndPlay(
+  conn: AppleTVConnection,
+  title: string,
+  automation: SearchAutomation,
+): Promise<SearchStage> {
   await launchApp(conn, TV_SEARCH_BUNDLE);
+
+  let typed = false;
   for (let attempt = 0; attempt < 16; attempt++) {
     await delay(500);
-    try {
-      if (await getKeyboardFocusState(conn)) {
-        await setText(conn, title);
-        return true;
-      }
-    } catch {
-      // keyboard session not up yet — keep waiting
+    if (await keyboardFocused(conn)) {
+      await setText(conn, title);
+      typed = true;
+      break;
     }
   }
-  return false;
+  if (!typed) return "failed";
+  if (automation === "type") return "typed";
+
+  // Let live results populate (no "results ready" event exists).
+  await delay(2000);
+
+  // Leave the keyboard — verified by the focus flag flipping false.
+  let leftKeyboard = false;
+  for (let presses = 0; presses < 2; presses++) {
+    await sendKey(conn, RemoteKey.Down);
+    await delay(KEY_GAP_MS);
+    if (!(await keyboardFocused(conn))) {
+      leftKeyboard = true;
+      break;
+    }
+  }
+  if (!leftKeyboard) return "typed"; // single/zero-result quirk — don't press blind
+
+  // Open the focused item.
+  await sendKey(conn, RemoteKey.Select);
+  await delay(1500);
+
+  // If the keyboard came back, we selected a suggestion (query refined) —
+  // descend into the refreshed results and open the top poster.
+  if (await keyboardFocused(conn)) {
+    await delay(800);
+    await sendKey(conn, RemoteKey.Down);
+    await delay(KEY_GAP_MS);
+    if (await keyboardFocused(conn)) return "typed";
+    await sendKey(conn, RemoteKey.Select);
+    await delay(1500);
+  }
+
+  // We're now on the title's canonical page. Stopping here is the reliable
+  // default: it lists every provider, and which "watch option" has default
+  // focus is invisible to us — a blind Play can start the wrong app.
+  if (automation !== "play") return "opened";
+
+  await delay(KEY_GAP_MS);
+  await sendKey(conn, RemoteKey.Select);
+  return "played";
 }
 
 export interface PlayResult {
@@ -102,8 +169,9 @@ export async function playContent(title: string, appHint?: string): Promise<Play
   }
 
   // 3. Universal Search flow (Netflix & friends, or unresolved titles).
-  const typed = await withConnection((conn) => typeIntoUniversalSearch(conn, displayTitle));
-  if (typed) {
+  const { searchAutomation } = getPreferenceValues<{ searchAutomation?: SearchAutomation }>();
+  const stage = await withConnection((conn) => searchAndPlay(conn, displayTitle, searchAutomation ?? "open"));
+  if (stage !== "failed") {
     const where = offer
       ? honorsHint
         ? ` — it's on ${offer.provider.clearName}`
@@ -111,7 +179,12 @@ export async function playContent(title: string, appHint?: string): Promise<Play
       : "";
     return {
       ok: true,
-      message: `Typed “${displayTitle}” into Apple TV Search${where}. Pick the result on screen.`,
+      message:
+        stage === "played"
+          ? `Pressed Play on the top result for “${displayTitle}”${where}. Check the TV — the default watch option may not be your preferred app.`
+          : stage === "opened"
+            ? `Opened “${displayTitle}”${where}. Pick your streaming app on the title page.`
+            : `Typed “${displayTitle}” into Apple TV Search${where}. Pick the result on screen.`,
     };
   }
 
