@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Action, ActionPanel, Color, Form, Icon, Keyboard, List, Toast, showToast, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Color, Form, Grid, Icon, Keyboard, Toast, showToast, useNavigation } from "@raycast/api";
 import { AppleTVConnection, RemoteKey, disconnect, onConnectionLost, sendKey, setText } from "@bharper/atv-js";
 import { openConnection } from "./lib/connection";
 import { NotPairedError, showErrorToast } from "./lib/errors";
@@ -7,12 +7,14 @@ import { appSwitcher, controlCenter, longPressSelect, skipBy, startScreensaver }
 
 type Status = "connecting" | "connected" | "reconnecting" | "disconnected" | "not-paired";
 
+type DeviceAction = (conn: AppleTVConnection) => Promise<void>;
+
 /**
- * The remote view holds ONE live Companion connection for its whole lifetime,
- * so every keypress is instant. Two input layers:
- *  - Bare keys, no modifiers: the search bar (filtering off) intercepts typed
- *    characters — WASD/HJKL navigate, F selects, Space toggles playback.
- *  - ⌥-shortcuts for everything, usable regardless of focus.
+ * A visual Apple TV remote: a 3-column grid laid out like the physical remote,
+ * clickable with the mouse, holding ONE live Companion connection so every
+ * press is instant. Keyboard layers on top:
+ *  - Bare keys via search interception — WASD/HJKL move, F select, Space ⏯.
+ *  - ⌥-shortcuts for every action, regardless of selection.
  */
 export default function Remote() {
   const connRef = useRef<AppleTVConnection | null>(null);
@@ -49,7 +51,7 @@ export default function Remote() {
   }, [establish]);
 
   const run = useCallback(
-    async (action: (conn: AppleTVConnection) => Promise<void>) => {
+    async (action: DeviceAction) => {
       let conn = connRef.current;
       if (!conn) {
         await establish();
@@ -71,91 +73,55 @@ export default function Remote() {
     push(<TypeTextForm connRef={connRef} />);
   }, [push]);
 
-  // Bare-key layer: every typed character is a button press. The search bar is
-  // the only surface Raycast lets us read unmodified keystrokes from.
+  // Bare-key layer: typed characters are button presses.
   const handleTyped = useCallback(
     (text: string) => {
-      if (!text) return;
       for (const ch of text.toLowerCase()) {
-        switch (ch) {
-          case "w":
-          case "k":
-            void press(RemoteKey.Up);
-            break;
-          case "s":
-          case "j":
-            void press(RemoteKey.Down);
-            break;
-          case "a":
-          case "h":
-            void press(RemoteKey.Left);
-            break;
-          case "d":
-          case "l":
-            void press(RemoteKey.Right);
-            break;
-          case "f":
-          case "g":
-            void press(RemoteKey.Select);
-            break;
-          case " ":
-            void press(RemoteKey.PlayPause);
-            break;
-          case "b":
-            void press(RemoteKey.Menu);
-            break;
-          case "q":
-            void press(RemoteKey.Home);
-            break;
-          case "v":
-            void run(longPressSelect);
-            break;
-          case "x":
-            void run(appSwitcher);
-            break;
-          case "c":
-            void run(controlCenter);
-            break;
-          case "[":
-            void press(RemoteKey.Previous);
-            break;
-          case "]":
-            void press(RemoteKey.Next);
-            break;
-          case ",":
-            void run((conn) => skipBy(conn, -10));
-            break;
-          case ".":
-            void run((conn) => skipBy(conn, 10));
-            break;
-          case "-":
-            void press(RemoteKey.VolumeDown);
-            break;
-          case "=":
-          case "+":
-            void press(RemoteKey.VolumeUp);
-            break;
-          case "t":
-            pushTypeText();
-            break;
-        }
+        const map: Record<string, () => void> = {
+          w: () => void press(RemoteKey.Up),
+          k: () => void press(RemoteKey.Up),
+          s: () => void press(RemoteKey.Down),
+          j: () => void press(RemoteKey.Down),
+          a: () => void press(RemoteKey.Left),
+          h: () => void press(RemoteKey.Left),
+          d: () => void press(RemoteKey.Right),
+          l: () => void press(RemoteKey.Right),
+          f: () => void press(RemoteKey.Select),
+          g: () => void press(RemoteKey.Select),
+          " ": () => void press(RemoteKey.PlayPause),
+          b: () => void press(RemoteKey.Menu),
+          q: () => void press(RemoteKey.Home),
+          v: () => void run(longPressSelect),
+          x: () => void run(appSwitcher),
+          c: () => void run(controlCenter),
+          "[": () => void press(RemoteKey.Previous),
+          "]": () => void press(RemoteKey.Next),
+          ",": () => void run((conn) => skipBy(conn, -10)),
+          ".": () => void run((conn) => skipBy(conn, 10)),
+          "-": () => void press(RemoteKey.VolumeDown),
+          "=": () => void press(RemoteKey.VolumeUp),
+          "+": () => void press(RemoteKey.VolumeUp),
+          t: () => pushTypeText(),
+        };
+        map[ch]?.();
       }
     },
     [press, run, pushTypeText],
   );
 
-  const statusAccessory: List.Item.Accessory =
+  const statusLabel =
     status === "connected"
-      ? { tag: { value: "Connected", color: Color.Green } }
+      ? "Connected"
       : status === "connecting" || status === "reconnecting"
-        ? { tag: { value: "Connecting…", color: Color.Yellow } }
-        : { tag: { value: "Disconnected", color: Color.Red } };
+        ? "Connecting…"
+        : status === "not-paired"
+          ? "Not Paired"
+          : "Disconnected";
 
-  // One shared ActionPanel so every ⌥-shortcut works regardless of selection.
-  const actions = (
-    <ActionPanel>
-      <ActionPanel.Section title="Navigate">
-        <Action title="Select" icon={Icon.CircleFilled} onAction={() => press(RemoteKey.Select)} />
+  // Shared shortcut actions available from every cell.
+  const sharedShortcuts = (
+    <>
+      <ActionPanel.Section title="Navigate (⌥)">
         <Action
           title="Up"
           icon={Icon.ArrowUp}
@@ -181,86 +147,24 @@ export default function Remote() {
           onAction={() => press(RemoteKey.Right)}
         />
         <Action
+          title="Select"
+          icon={Icon.CircleFilled}
+          shortcut={{ modifiers: ["opt"], key: "return" }}
+          onAction={() => press(RemoteKey.Select)}
+        />
+        <Action
           title="Back"
           icon={Icon.ArrowUturnLeft}
           shortcut={{ modifiers: ["opt"], key: "backspace" }}
           onAction={() => press(RemoteKey.Menu)}
         />
-        <Action
-          title="Home"
-          icon={Icon.House}
-          shortcut={{ modifiers: ["opt"], key: "q" }}
-          onAction={() => press(RemoteKey.Home)}
-        />
-        <Action
-          title="Context Menu (Hold Select)"
-          icon={Icon.BulletPoints}
-          shortcut={{ modifiers: ["opt"], key: "v" }}
-          onAction={() => run(longPressSelect)}
-        />
-        <Action
-          title="App Switcher"
-          icon={Icon.AppWindowGrid2x2}
-          shortcut={{ modifiers: ["opt"], key: "x" }}
-          onAction={() => run(appSwitcher)}
-        />
-        <Action
-          title="Control Center"
-          icon={Icon.Switch}
-          shortcut={{ modifiers: ["opt"], key: "c" }}
-          onAction={() => run(controlCenter)}
-        />
       </ActionPanel.Section>
-      <ActionPanel.Section title="Playback">
+      <ActionPanel.Section title="More (⌥)">
         <Action
           title="Play/Pause"
           icon={Icon.PlayFilled}
           shortcut={{ modifiers: ["opt"], key: "p" }}
           onAction={() => press(RemoteKey.PlayPause)}
-        />
-        <Action
-          title="Skip Forward 10S"
-          icon={Icon.Forward}
-          shortcut={{ modifiers: ["opt"], key: "." }}
-          onAction={() => run((conn) => skipBy(conn, 10))}
-        />
-        <Action
-          title="Skip Back 10S"
-          icon={Icon.Rewind}
-          shortcut={{ modifiers: ["opt"], key: "," }}
-          onAction={() => run((conn) => skipBy(conn, -10))}
-        />
-        <Action
-          title="Next"
-          icon={Icon.ForwardFilled}
-          shortcut={{ modifiers: ["opt"], key: "]" }}
-          onAction={() => press(RemoteKey.Next)}
-        />
-        <Action
-          title="Previous"
-          icon={Icon.RewindFilled}
-          shortcut={{ modifiers: ["opt"], key: "[" }}
-          onAction={() => press(RemoteKey.Previous)}
-        />
-        <Action
-          title="Volume up"
-          icon={Icon.SpeakerUp}
-          shortcut={{ modifiers: ["opt"], key: "=" }}
-          onAction={() => press(RemoteKey.VolumeUp)}
-        />
-        <Action
-          title="Volume Down"
-          icon={Icon.SpeakerDown}
-          shortcut={{ modifiers: ["opt"], key: "-" }}
-          onAction={() => press(RemoteKey.VolumeDown)}
-        />
-      </ActionPanel.Section>
-      <ActionPanel.Section title="More">
-        <Action
-          title="Type Text on TV"
-          icon={Icon.Keyboard}
-          shortcut={{ modifiers: ["opt"], key: "t" }}
-          onAction={pushTypeText}
         />
         <Action
           title="Start Screensaver"
@@ -275,36 +179,100 @@ export default function Remote() {
           onAction={establish}
         />
       </ActionPanel.Section>
-    </ActionPanel>
+    </>
   );
 
-  const rows: { title: string; subtitle: string; icon: Icon }[] = [
-    { title: "Navigate", subtitle: "W A S D (or H J K L) move · F select · B back · Q home", icon: Icon.Compass },
-    { title: "Playback", subtitle: "Space play/pause · , . skip ±10s · [ ] prev/next", icon: Icon.Play },
-    { title: "Volume", subtitle: "− softer · = louder", icon: Icon.Speaker },
-    { title: "System", subtitle: "V hold-select menu · X app switcher · C control center", icon: Icon.Cog },
-    { title: "Type Text", subtitle: "T — fill a search field on the TV", icon: Icon.Keyboard },
+  interface Cell {
+    id: string;
+    icon: Icon | "blank";
+    title: string;
+    tint?: Color;
+    action?: DeviceAction | "type-text";
+  }
+
+  const cells: Cell[] = [
+    { id: "ctx", icon: Icon.BulletPoints, title: "Hold Select", action: longPressSelect },
+    { id: "up", icon: Icon.ChevronUp, title: "Up", tint: Color.PrimaryText, action: (c) => sendKey(c, RemoteKey.Up) },
+    { id: "switcher", icon: Icon.AppWindowGrid2x2, title: "Switcher", action: appSwitcher },
+    {
+      id: "left",
+      icon: Icon.ChevronLeft,
+      title: "Left",
+      tint: Color.PrimaryText,
+      action: (c) => sendKey(c, RemoteKey.Left),
+    },
+    {
+      id: "select",
+      icon: Icon.CircleFilled,
+      title: "Select",
+      tint: Color.Blue,
+      action: (c) => sendKey(c, RemoteKey.Select),
+    },
+    {
+      id: "right",
+      icon: Icon.ChevronRight,
+      title: "Right",
+      tint: Color.PrimaryText,
+      action: (c) => sendKey(c, RemoteKey.Right),
+    },
+    { id: "back", icon: Icon.ArrowUturnLeft, title: "Back", action: (c) => sendKey(c, RemoteKey.Menu) },
+    {
+      id: "down",
+      icon: Icon.ChevronDown,
+      title: "Down",
+      tint: Color.PrimaryText,
+      action: (c) => sendKey(c, RemoteKey.Down),
+    },
+    { id: "home", icon: Icon.House, title: "Home", action: (c) => sendKey(c, RemoteKey.Home) },
+    { id: "skipback", icon: Icon.Rewind, title: "-10s", action: (c) => skipBy(c, -10) },
+    {
+      id: "playpause",
+      icon: Icon.PlayFilled,
+      title: "Play/Pause",
+      tint: Color.Blue,
+      action: (c) => sendKey(c, RemoteKey.PlayPause),
+    },
+    { id: "skipfwd", icon: Icon.Forward, title: "+10s", action: (c) => skipBy(c, 10) },
+    { id: "voldown", icon: Icon.SpeakerDown, title: "Vol −", action: (c) => sendKey(c, RemoteKey.VolumeDown) },
+    { id: "cc", icon: Icon.Switch, title: "Control Center", action: controlCenter },
+    { id: "volup", icon: Icon.SpeakerUp, title: "Vol +", action: (c) => sendKey(c, RemoteKey.VolumeUp) },
+    { id: "blank-l", icon: "blank", title: "" },
+    { id: "type", icon: Icon.Keyboard, title: "Type Text", action: "type-text" },
+    { id: "blank-r", icon: "blank", title: "" },
   ];
 
   return (
-    <List
-      navigationTitle={`Remote — ${deviceName}`}
-      searchBarPlaceholder="Press keys: WASD move · F select · Space play · B back"
+    <Grid
+      columns={3}
+      inset={Grid.Inset.Large}
+      navigationTitle={`${deviceName} — ${statusLabel}`}
+      searchBarPlaceholder="Keys: WASD move · F select · Space ⏯ · B back · Q home"
       filtering={false}
-      searchText=""
       onSearchTextChange={handleTyped}
+      searchText=""
     >
-      {rows.map((row, index) => (
-        <List.Item
-          key={row.title}
-          icon={row.icon}
-          title={row.title}
-          subtitle={row.subtitle}
-          accessories={index === 0 ? [statusAccessory] : undefined}
-          actions={actions}
+      {cells.map((cell) => (
+        <Grid.Item
+          key={cell.id}
+          content={
+            cell.icon === "blank" ? "blank.png" : { source: cell.icon, tintColor: cell.tint ?? Color.SecondaryText }
+          }
+          title={cell.title}
+          actions={
+            cell.action ? (
+              <ActionPanel>
+                <Action
+                  title={cell.title || "Press"}
+                  icon={cell.icon === "blank" ? Icon.Dot : cell.icon}
+                  onAction={() => (cell.action === "type-text" ? pushTypeText() : run(cell.action as DeviceAction))}
+                />
+                {sharedShortcuts}
+              </ActionPanel>
+            ) : undefined
+          }
         />
       ))}
-    </List>
+    </Grid>
   );
 }
 
