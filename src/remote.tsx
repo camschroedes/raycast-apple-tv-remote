@@ -190,61 +190,88 @@ export default function Remote() {
     action?: DeviceAction | "type-text";
   }
 
+  const B = (id: string): Cell => ({ id, icon: "blank", title: "" });
+
   const cells: Cell[] = [
-    { id: "ctx", icon: Icon.BulletPoints, title: "Hold Select", action: longPressSelect },
-    { id: "up", icon: Icon.ChevronUp, title: "Up", tint: Color.PrimaryText, action: (c) => sendKey(c, RemoteKey.Up) },
-    { id: "switcher", icon: Icon.AppWindowGrid2x2, title: "Switcher", action: appSwitcher },
+    // Row 1
+    B("b1"),
+    { id: "ctx", icon: Icon.BulletPoints, title: "Hold · V", action: longPressSelect },
+    {
+      id: "up",
+      icon: Icon.ChevronUp,
+      title: "Up · W",
+      tint: Color.PrimaryText,
+      action: (c) => sendKey(c, RemoteKey.Up),
+    },
+    { id: "switcher", icon: Icon.AppWindowGrid2x2, title: "Apps · X", action: appSwitcher },
+    B("b2"),
+    // Row 2
+    B("b3"),
     {
       id: "left",
       icon: Icon.ChevronLeft,
-      title: "Left",
+      title: "Left · A",
       tint: Color.PrimaryText,
       action: (c) => sendKey(c, RemoteKey.Left),
     },
     {
       id: "select",
       icon: Icon.CircleFilled,
-      title: "Select",
+      title: "Select · F",
       tint: Color.Blue,
       action: (c) => sendKey(c, RemoteKey.Select),
     },
     {
       id: "right",
       icon: Icon.ChevronRight,
-      title: "Right",
+      title: "Right · D",
       tint: Color.PrimaryText,
       action: (c) => sendKey(c, RemoteKey.Right),
     },
-    { id: "back", icon: Icon.ArrowUturnLeft, title: "Back", action: (c) => sendKey(c, RemoteKey.Menu) },
+    B("b4"),
+    // Row 3
+    B("b5"),
+    { id: "back", icon: Icon.ArrowUturnLeft, title: "Back · B", action: (c) => sendKey(c, RemoteKey.Menu) },
     {
       id: "down",
       icon: Icon.ChevronDown,
-      title: "Down",
+      title: "Down · S",
       tint: Color.PrimaryText,
       action: (c) => sendKey(c, RemoteKey.Down),
     },
-    { id: "home", icon: Icon.House, title: "Home", action: (c) => sendKey(c, RemoteKey.Home) },
-    { id: "skipback", icon: Icon.Rewind, title: "-10s", action: (c) => skipBy(c, -10) },
+    { id: "home", icon: Icon.House, title: "Home · Q", action: (c) => sendKey(c, RemoteKey.Home) },
+    B("b6"),
+    // Row 4
+    B("b7"),
+    { id: "skipback", icon: Icon.Rewind, title: "−10s · ,", action: (c) => skipBy(c, -10) },
     {
       id: "playpause",
       icon: Icon.PlayFilled,
-      title: "Play/Pause",
+      title: "Play · ␣",
       tint: Color.Blue,
       action: (c) => sendKey(c, RemoteKey.PlayPause),
     },
-    { id: "skipfwd", icon: Icon.Forward, title: "+10s", action: (c) => skipBy(c, 10) },
-    { id: "voldown", icon: Icon.SpeakerDown, title: "Vol −", action: (c) => sendKey(c, RemoteKey.VolumeDown) },
-    { id: "cc", icon: Icon.Switch, title: "Control Center", action: controlCenter },
-    { id: "volup", icon: Icon.SpeakerUp, title: "Vol +", action: (c) => sendKey(c, RemoteKey.VolumeUp) },
-    { id: "blank-l", icon: "blank", title: "" },
-    { id: "type", icon: Icon.Keyboard, title: "Type Text", action: "type-text" },
-    { id: "blank-r", icon: "blank", title: "" },
+    { id: "skipfwd", icon: Icon.Forward, title: "+10s · .", action: (c) => skipBy(c, 10) },
+    B("b8"),
+    // Row 5
+    B("b9"),
+    { id: "voldown", icon: Icon.SpeakerDown, title: "Vol − · -", action: (c) => sendKey(c, RemoteKey.VolumeDown) },
+    { id: "cc", icon: Icon.Switch, title: "Control Center · C", action: controlCenter },
+    { id: "volup", icon: Icon.SpeakerUp, title: "Vol + · =", action: (c) => sendKey(c, RemoteKey.VolumeUp) },
+    B("b10"),
+    // Row 6
+    B("b11"),
+    B("b12"),
+    { id: "type", icon: Icon.Keyboard, title: "Type · T", action: "type-text" },
+    B("b13"),
+    B("b14"),
   ];
 
   return (
     <Grid
-      columns={3}
-      inset={Grid.Inset.Large}
+      columns={5}
+      aspectRatio="4/3"
+      inset={Grid.Inset.Small}
       navigationTitle={`${deviceName} — ${statusLabel}`}
       searchBarPlaceholder="Keys: WASD move · F select · Space ⏯ · B back · Q home"
       filtering={false}
