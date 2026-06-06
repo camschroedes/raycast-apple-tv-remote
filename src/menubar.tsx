@@ -60,7 +60,7 @@ export default function Command() {
           onAction={fire("pause")}
           alternate={<MenuBarExtra.Item title="Control Center" icon={Icon.Switch} onAction={fire("control center")} />}
         />
-        <MenuBarExtra.Item title="Skip Forward 10s" icon={Icon.Forward} onAction={fire("skip")} />
+        <MenuBarExtra.Item title="Skip Forward 10s" icon={Icon.Forward} onAction={fire("skip forward")} />
         <MenuBarExtra.Item title="Skip Back 10s" icon={Icon.Rewind} onAction={fire("skip back")} />
         <MenuBarExtra.Item title="Volume Up" icon={Icon.SpeakerUp} onAction={fire("volume up")} />
         <MenuBarExtra.Item title="Volume Down" icon={Icon.SpeakerDown} onAction={fire("volume down")} />
