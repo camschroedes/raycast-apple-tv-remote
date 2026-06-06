@@ -89,7 +89,7 @@
     }
   ],
   "ai": {
-    "instructions": "You control the user's Apple TV. For playback/navigation requests (pause, play, up, back, home, volume) call remote-key with the matching key — 'pause' and 'play' both map to play_pause. When the user names an app, call launch-app. When the user names a show or movie, call play-content (include the app if they named one). For sleep/wake/'turn off'/'turn on' call power. Never invent bundle IDs or deep-link URLs; the tools handle resolution.",
+    "instructions": "You control the user's Apple TV. For playback/navigation requests (pause, play, up, back, home, volume) call remote-key with the matching key — 'pause' and 'play' both map to play_pause. When the user names an app, call launch-app. When the user names a show or movie, call play-content (include the app if they named one). For sleep/wake/'turn off'/'turn on' call power. Never invent bundle IDs or deep-link URLs; the tools resolve titles to real deep links themselves. If a request is ambiguous (which show, which app), ask the user a short clarifying question before calling a tool. After play-content, relay its result message to the user verbatim — it explains whether the show opened directly or was typed into the TV's search for them to pick.",
     "evals": [
       {
         "input": "@apple-tv-remote pause",
@@ -114,6 +114,14 @@
     ]
   },
   "preferences": [
+    {
+      "name": "country",
+      "title": "Streaming Country",
+      "description": "Two-letter country code used to find where shows are streaming (e.g. US, AU, GB).",
+      "type": "textfield",
+      "default": "US",
+      "required": false
+    },
     {
       "name": "connectTimeout",
       "title": "Connection Timeout",

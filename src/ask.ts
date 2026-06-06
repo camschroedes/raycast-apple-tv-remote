@@ -1,9 +1,10 @@
-import { AI, LaunchProps, environment, showHUD } from "@raycast/api";
+import { LaunchProps, showHUD } from "@raycast/api";
 import { RemoteKey, sendKey } from "@bharper/atv-js";
 import { withConnection } from "./lib/connection";
 import { showErrorToast } from "./lib/errors";
 import { launchApp, sleepDevice, wakeDevice } from "./lib/companion-extras";
 import { resolveAppName } from "./lib/deep-links";
+import { playContent } from "./lib/play-flow";
 
 /**
  * One-shot natural-language command: "pause", "open Netflix",
@@ -55,39 +56,9 @@ async function openApp(appName: string): Promise<void> {
   await showHUD(`📺 Opened ${resolved.name}`);
 }
 
-async function playContent(title: string, appName?: string): Promise<void> {
-  // Ask Raycast AI for a deep link when available; never block on it.
-  if (environment.canAccess(AI)) {
-    try {
-      const raw = await AI.ask(
-        `Respond with ONLY minified JSON {"app": string, "url": string|null}. ` +
-          `"url" is a working tvOS deep link for the show/movie "${title}" ` +
-          `(Netflix: https://www.netflix.com/title/<numericId>, Apple TV: https://tv.apple.com/show/<id>?action=play). ` +
-          `Use null if not certain — never invent IDs. "app" is the streaming service${appName ? ` (prefer "${appName}")` : ""}.`,
-        { creativity: "none" },
-      );
-      const parsed = JSON.parse(raw.trim().replace(/^```(?:json)?|```$/g, "")) as {
-        app?: string;
-        url?: string | null;
-      };
-      if (parsed.url) {
-        await withConnection((conn) => launchApp(conn, parsed.url as string));
-        await showHUD(`▶️ Opening ${title}…`);
-        return;
-      }
-      appName = appName ?? parsed.app;
-    } catch {
-      // fall through to plain app launch
-    }
-  }
-
-  const resolved = resolveAppName(appName ?? "");
-  if (!resolved) {
-    await showHUD(`❓ Tell me the app too, e.g. “play ${title} on Netflix”`);
-    return;
-  }
-  await withConnection((conn) => launchApp(conn, resolved.bundleId));
-  await showHUD(`📺 Opened ${resolved.name} — search for “${title}”`);
+async function playTitle(title: string, appName?: string): Promise<void> {
+  const result = await playContent(title, appName);
+  await showHUD(`${result.ok ? "▶️" : "❓"} ${result.message}`);
 }
 
 export default async function Ask(props: LaunchProps<{ arguments: { query: string } }>) {
@@ -123,7 +94,7 @@ export default async function Ask(props: LaunchProps<{ arguments: { query: strin
     // 4. "play/watch <title> [on <app>]"
     const playMatch = query.match(/^(?:play|watch)\s+(.+?)(?:\s+on\s+([a-z0-9+ ]+))?$/);
     if (playMatch) {
-      await playContent(playMatch[1], playMatch[2]);
+      await playTitle(playMatch[1], playMatch[2]);
       return;
     }
 
