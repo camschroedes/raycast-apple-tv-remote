@@ -1,5 +1,5 @@
-import { Action, ActionPanel, Grid, Icon, popToRoot, showHUD } from "@raycast/api";
-import { useCachedPromise } from "@raycast/utils";
+import { Action, ActionPanel, Grid, Icon, LaunchType, popToRoot, showHUD } from "@raycast/api";
+import { createDeeplink, useCachedPromise } from "@raycast/utils";
 import { useEffect, useRef, useState } from "react";
 import { launchApp, listApps } from "./lib/companion-extras";
 import { withConnection } from "./lib/connection";
@@ -82,6 +82,18 @@ export default function LaunchAppCommand() {
           actions={
             <ActionPanel>
               <Action title="Open on Apple TV" icon={Icon.Tv} onAction={() => open(entry)} />
+              {/* Saved quicklinks accept their own global hotkey/alias — one keystroke to any app. */}
+              <Action.CreateQuicklink
+                title="Save as Quicklink (Hotkey-Able)"
+                quicklink={{
+                  name: `Open ${entry.name} on Apple TV`,
+                  link: createDeeplink({
+                    command: "ask",
+                    launchType: LaunchType.Background,
+                    arguments: { query: `open ${entry.name.toLowerCase()}` },
+                  }),
+                }}
+              />
             </ActionPanel>
           }
         />

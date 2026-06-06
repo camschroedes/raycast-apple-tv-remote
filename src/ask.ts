@@ -2,7 +2,17 @@ import { LaunchProps, showHUD } from "@raycast/api";
 import { RemoteKey, sendKey } from "@bharper/atv-js";
 import { withConnection } from "./lib/connection";
 import { showErrorToast } from "./lib/errors";
-import { launchApp, sleepDevice, wakeDevice } from "./lib/companion-extras";
+import {
+  appSwitcher,
+  controlCenter,
+  launchApp,
+  longPressSelect,
+  skipBy,
+  sleepDevice,
+  startScreensaver,
+  wakeDevice,
+} from "./lib/companion-extras";
+import { setText } from "@bharper/atv-js";
 import { resolveAppName } from "./lib/deep-links";
 import { playContent } from "./lib/play-flow";
 import { SpotifyNotConfiguredError, playPlaylistOnTV } from "./lib/spotify";
@@ -73,7 +83,7 @@ export default async function Ask(props: LaunchProps<{ arguments: { query: strin
       return;
     }
 
-    // 2. Power
+    // 2. Power + gestures
     if (/^(sleep|turn off|off)$/.test(query)) {
       await withConnection(sleepDevice);
       await showHUD("😴 Apple TV going to sleep");
@@ -82,6 +92,39 @@ export default async function Ask(props: LaunchProps<{ arguments: { query: strin
     if (/^(wake|wake up|turn on|on)$/.test(query)) {
       await withConnection(wakeDevice);
       await showHUD("👋 Waking Apple TV");
+      return;
+    }
+    if (/^(app switcher|switcher|multitask)$/.test(query)) {
+      await withConnection(appSwitcher);
+      await showHUD("🗂 App Switcher");
+      return;
+    }
+    if (/^control center$/.test(query)) {
+      await withConnection(controlCenter);
+      await showHUD("🎛 Control Center");
+      return;
+    }
+    if (/^(context menu|hold select|long press)$/.test(query)) {
+      await withConnection(longPressSelect);
+      await showHUD("📋 Context Menu");
+      return;
+    }
+    if (/^screensaver$/.test(query)) {
+      await withConnection(startScreensaver);
+      await showHUD("🌌 Screensaver");
+      return;
+    }
+    const skipMatch = query.match(/^skip(?:\s+(back|backward|forward))?(?:\s+(\d+))?$/);
+    if (skipMatch) {
+      const seconds = Number(skipMatch[2] ?? 10) * (skipMatch[1]?.startsWith("back") ? -1 : 1);
+      await withConnection((conn) => skipBy(conn, seconds));
+      await showHUD(`${seconds > 0 ? "⏩" : "⏪"} ${Math.abs(seconds)}s`);
+      return;
+    }
+    const typeMatch = query.match(/^type\s+(.+)$/);
+    if (typeMatch) {
+      await withConnection((conn) => setText(conn, typeMatch[1]));
+      await showHUD("⌨️ Sent text to Apple TV");
       return;
     }
 

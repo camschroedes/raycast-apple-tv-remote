@@ -5,7 +5,10 @@
   "description": "Control your Apple TV over the local network — d-pad remote, app launcher, deep links, and AI commands. No external installs required.",
   "icon": "command-icon.png",
   "author": "camschroedes",
-  "categories": ["Media", "Applications"],
+  "categories": [
+    "Media",
+    "Applications"
+  ],
   "license": "MIT",
   "commands": [
     {
@@ -64,6 +67,212 @@
       "subtitle": "Apple TV",
       "description": "Quick Apple TV controls from your menu bar.",
       "mode": "menu-bar"
+    },
+    {
+      "name": "up",
+      "title": "Up",
+      "subtitle": "Apple TV",
+      "description": "Press Up on the Apple TV remote.",
+      "mode": "no-view",
+      "keywords": [
+        "atv"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "down",
+      "title": "Down",
+      "subtitle": "Apple TV",
+      "description": "Press Down on the Apple TV remote.",
+      "mode": "no-view",
+      "keywords": [
+        "atv"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "left",
+      "title": "Left",
+      "subtitle": "Apple TV",
+      "description": "Press Left on the Apple TV remote.",
+      "mode": "no-view",
+      "keywords": [
+        "atv"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "right",
+      "title": "Right",
+      "subtitle": "Apple TV",
+      "description": "Press Right on the Apple TV remote.",
+      "mode": "no-view",
+      "keywords": [
+        "atv"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "select",
+      "title": "Select",
+      "subtitle": "Apple TV",
+      "description": "Press Select on the Apple TV remote.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "ok"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "back",
+      "title": "Back",
+      "subtitle": "Apple TV",
+      "description": "Go back (Menu) on the Apple TV.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "menu"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "volume-up",
+      "title": "Volume Up",
+      "subtitle": "Apple TV",
+      "description": "Turn the Apple TV volume up.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "louder"
+      ]
+    },
+    {
+      "name": "volume-down",
+      "title": "Volume Down",
+      "subtitle": "Apple TV",
+      "description": "Turn the Apple TV volume down.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "quieter"
+      ]
+    },
+    {
+      "name": "skip-forward",
+      "title": "Skip Forward 10s",
+      "subtitle": "Apple TV",
+      "description": "Skip forward in the current video.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "seek"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "skip-back",
+      "title": "Skip Back 10s",
+      "subtitle": "Apple TV",
+      "description": "Skip backward in the current video.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "seek",
+        "rewind"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "context-menu",
+      "title": "Long-Press Select",
+      "subtitle": "Apple TV",
+      "description": "Long-press select — opens context menus on the Apple TV.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "hold"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "app-switcher",
+      "title": "App Switcher",
+      "subtitle": "Apple TV",
+      "description": "Open the Apple TV app switcher.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "multitask"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "control-center",
+      "title": "Control Center",
+      "subtitle": "Apple TV",
+      "description": "Open Control Center on the Apple TV.",
+      "mode": "no-view",
+      "keywords": [
+        "atv"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "sleep",
+      "title": "Sleep Apple TV",
+      "subtitle": "Apple TV",
+      "description": "Put the Apple TV to sleep.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "off"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "wake",
+      "title": "Wake Apple TV",
+      "subtitle": "Apple TV",
+      "description": "Wake the Apple TV up.",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "on"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "screensaver",
+      "title": "Start Screensaver",
+      "subtitle": "Apple TV",
+      "description": "Start the Apple TV screensaver (can be flaky on some models).",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "aerial"
+      ],
+      "disabledByDefault": true
+    },
+    {
+      "name": "type-text",
+      "title": "Type Text on Apple TV",
+      "subtitle": "Apple TV",
+      "description": "Send text into the focused field on the Apple TV (e.g. a search box).",
+      "mode": "no-view",
+      "keywords": [
+        "atv",
+        "keyboard",
+        "input"
+      ],
+      "arguments": [
+        {
+          "name": "text",
+          "placeholder": "text to type",
+          "type": "text",
+          "required": true
+        }
+      ]
     }
   ],
   "tools": [
@@ -98,23 +307,64 @@
     "evals": [
       {
         "input": "@apple-tv-remote pause",
-        "mocks": { "remote-key": "Pressed play_pause" },
-        "expected": [{ "callsTool": { "name": "remote-key", "arguments": { "key": "play_pause" } } }]
+        "mocks": {
+          "remote-key": "Pressed play_pause"
+        },
+        "expected": [
+          {
+            "callsTool": {
+              "name": "remote-key",
+              "arguments": {
+                "key": "play_pause"
+              }
+            }
+          }
+        ]
       },
       {
         "input": "@apple-tv-remote open Netflix",
-        "mocks": { "launch-app": "Launched Netflix" },
-        "expected": [{ "callsTool": { "name": "launch-app", "arguments": { "app": "Netflix" } } }]
+        "mocks": {
+          "launch-app": "Launched Netflix"
+        },
+        "expected": [
+          {
+            "callsTool": {
+              "name": "launch-app",
+              "arguments": {
+                "app": "Netflix"
+              }
+            }
+          }
+        ]
       },
       {
         "input": "@apple-tv-remote play Rick and Morty on Netflix",
-        "mocks": { "play-content": "Opened Rick and Morty on Netflix" },
-        "expected": [{ "callsTool": { "name": "play-content" } }]
+        "mocks": {
+          "play-content": "Opened Rick and Morty on Netflix"
+        },
+        "expected": [
+          {
+            "callsTool": {
+              "name": "play-content"
+            }
+          }
+        ]
       },
       {
         "input": "@apple-tv-remote put the tv to sleep",
-        "mocks": { "power": "Apple TV is going to sleep" },
-        "expected": [{ "callsTool": { "name": "power", "arguments": { "action": "sleep" } } }]
+        "mocks": {
+          "power": "Apple TV is going to sleep"
+        },
+        "expected": [
+          {
+            "callsTool": {
+              "name": "power",
+              "arguments": {
+                "action": "sleep"
+              }
+            }
+          }
+        ]
       }
     ]
   },
@@ -141,9 +391,18 @@
       "default": "open",
       "required": false,
       "data": [
-        { "title": "Type the title only", "value": "type" },
-        { "title": "Open top result (recommended)", "value": "open" },
-        { "title": "Open and press Play (may pick the wrong app)", "value": "play" }
+        {
+          "title": "Type the title only",
+          "value": "type"
+        },
+        {
+          "title": "Open top result (recommended)",
+          "value": "open"
+        },
+        {
+          "title": "Open and press Play (may pick the wrong app)",
+          "value": "play"
+        }
       ]
     },
     {
