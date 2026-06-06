@@ -86,10 +86,15 @@
       "name": "power",
       "title": "Power",
       "description": "Put the Apple TV to sleep or wake it up."
+    },
+    {
+      "name": "play-music",
+      "title": "Play Music",
+      "description": "Play a playlist from the user's Spotify library on the Apple TV via Spotify Connect. Use for any music or playlist request."
     }
   ],
   "ai": {
-    "instructions": "You control the user's Apple TV. For playback/navigation requests (pause, play, up, back, home, volume) call remote-key with the matching key — 'pause' and 'play' both map to play_pause. When the user names an app, call launch-app. When the user names a show or movie, call play-content (include the app if they named one). For sleep/wake/'turn off'/'turn on' call power. Never invent bundle IDs or deep-link URLs; the tools resolve titles to real deep links themselves. If a request is ambiguous (which show, which app), ask the user a short clarifying question before calling a tool. After play-content, relay its result message to the user verbatim — it explains whether the show opened directly or was typed into the TV's search for them to pick.",
+    "instructions": "You control the user's Apple TV. Route by intent: MUSIC or playlist requests ('play my hype playlist', 'put on some music') always call play-music — never play-content. Shows/movies call play-content (include the app if the user named one). For playback/navigation (pause, play, up, back, home, volume) call remote-key — 'pause' and 'play' both map to play_pause. App names call launch-app. Sleep/wake calls power. Never invent bundle IDs or deep-link URLs; the tools resolve real identifiers themselves. If a request is ambiguous (which show, which app), ask a short clarifying question first. Relay play-content and play-music result messages verbatim — they state exactly what happened and whether playback was confirmed.",
     "evals": [
       {
         "input": "@apple-tv-remote pause",
@@ -114,6 +119,13 @@
     ]
   },
   "preferences": [
+    {
+      "name": "spotifyClientId",
+      "title": "Spotify Client ID",
+      "description": "From your app at developer.spotify.com/dashboard — enables playing Spotify playlists on the Apple TV (Premium required).",
+      "type": "textfield",
+      "required": false
+    },
     {
       "name": "country",
       "title": "Streaming Country",
