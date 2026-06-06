@@ -86,19 +86,10 @@ export async function startScreensaver(conn: AppleTVConnection): Promise<void> {
   await pressHid(conn, HidCommand.Screensaver);
 }
 
-/** Channel up/down — only meaningful inside live-TV apps. */
-export async function channelUp(conn: AppleTVConnection): Promise<void> {
-  await pressHid(conn, HidCommand.ChannelIncrement);
-}
-
-export async function channelDown(conn: AppleTVConnection): Promise<void> {
-  await pressHid(conn, HidCommand.ChannelDecrement);
-}
-
 /**
  * Skip within the current media by N seconds (negative = backward) via the
- * MediaControl channel. NOTE: the library's RemoteKey.SkipForward/SkipBackward
- * are unmapped upstream and would throw — this is the working path.
+ * MediaControl channel — the seconds-based path pyatv uses; the library's
+ * key-press mapping for the skip keys is incomplete upstream.
  */
 export async function skipBy(conn: AppleTVConnection, seconds: number): Promise<void> {
   // opackFloat: the OPACK integer packer rejects negatives; pyatv sends _skpS as a float.

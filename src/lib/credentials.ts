@@ -18,7 +18,3 @@ export async function loadCredentials(deviceId: string): Promise<Credentials> {
   }
   return JSON.parse(raw) as Credentials;
 }
-
-export async function clearCredentials(deviceId: string): Promise<void> {
-  await LocalStorage.removeItem(credsKey(deviceId));
-}

@@ -3,7 +3,7 @@ import { Toast, showToast, launchCommand, LaunchType } from "@raycast/api";
 /** No Apple TV has been set up yet (no stored device/credentials). */
 export class NotPairedError extends Error {
   constructor() {
-    super("No Apple TV is set up yet. Run “Set Up Apple TV” to pair one.");
+    super("No Apple TV is set up yet. Run “Set up Apple TV” to pair one.");
     this.name = "NotPairedError";
   }
 }
@@ -30,7 +30,7 @@ export async function showErrorToast(error: unknown): Promise<void> {
       style: Toast.Style.Failure,
       title: "No Apple TV Set Up",
       message: error.message,
-      primaryAction: { title: "Set Up Apple TV", onAction: openSetup },
+      primaryAction: { title: "Set up Apple TV", onAction: openSetup },
     });
     return;
   }
@@ -51,6 +51,6 @@ export async function showErrorToast(error: unknown): Promise<void> {
     style: Toast.Style.Failure,
     title: looksLikeAuth ? "Pairing Expired" : "Apple TV Error",
     message: looksLikeAuth ? "Re-pair with your Apple TV to continue." : message,
-    primaryAction: looksLikeAuth ? { title: "Set Up Apple TV", onAction: openSetup } : undefined,
+    primaryAction: looksLikeAuth ? { title: "Set up Apple TV", onAction: openSetup } : undefined,
   });
 }

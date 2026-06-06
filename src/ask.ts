@@ -15,7 +15,6 @@ import {
 import { setText } from "@bharper/atv-js";
 import { loadCachedApps, resolveAppName } from "./lib/deep-links";
 import { playContent } from "./lib/play-flow";
-import { SpotifyNotConfiguredError, playPlaylistOnTV } from "./lib/spotify";
 
 /**
  * One-shot natural-language command: "pause", "open Netflix",
@@ -142,24 +141,7 @@ export default async function Ask(props: LaunchProps<{ arguments: { query: strin
       return;
     }
 
-    // 4. Music first — "play [my] <name> playlist" or "play <name> on spotify"
-    const musicMatch =
-      query.match(/^play\s+(?:my\s+)?(.+?)\s+playlist$/) ?? query.match(/^play\s+(.+?)\s+on\s+spotify$/);
-    if (musicMatch) {
-      try {
-        const result = await playPlaylistOnTV(musicMatch[1]);
-        await showHUD(`${result.ok ? "🎵" : "❓"} ${result.message}`);
-      } catch (error) {
-        if (error instanceof SpotifyNotConfiguredError) {
-          await showHUD(`🎧 ${error.message}`);
-          return;
-        }
-        throw error;
-      }
-      return;
-    }
-
-    // 5. "play/watch <title> [on <app>]"
+    // 4. "play/watch <title> [on <app>]"
     const playMatch = query.match(/^(?:play|watch)\s+(.+?)(?:\s+on\s+([a-z0-9+ ]+))?$/);
     if (playMatch) {
       await playTitle(playMatch[1], playMatch[2]);

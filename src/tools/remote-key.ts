@@ -5,15 +5,15 @@ import { appSwitcher, controlCenter, longPressSelect, skipBy, startScreensaver }
 type Input = {
   /**
    * The remote action to perform. One of: up, down, left, right, select, menu, home,
-   * play_pause, volume_up, volume_down, next, previous, top_menu, home_hold, guide,
-   * context_menu (long-press select), app_switcher, control_center, screensaver,
-   * skip_forward, skip_backward
+   * play_pause, volume_up, volume_down, next, previous, context_menu (long-press
+   * select), app_switcher, control_center, screensaver, skip_forward, skip_backward
    */
   key: string;
 };
 
 const VALID_KEYS = new Set<string>(Object.values(RemoteKey));
 
+// EXTRAS intentionally shadows the enum's skip keys — the MediaControl path works; the key-press mapping doesn't.
 const EXTRAS: Record<string, (conn: AppleTVConnection) => Promise<void>> = {
   context_menu: longPressSelect,
   long_press_select: longPressSelect,
