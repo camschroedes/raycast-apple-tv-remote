@@ -37,7 +37,11 @@ export default function Command() {
   const topApps = cachedApps ? Object.entries(cachedApps.apps).slice(0, 12) : [];
 
   return (
-    <MenuBarExtra title="📺" isLoading={isLoading} tooltip={device ? `Apple TV: ${device.name}` : "Apple TV Remote"}>
+    <MenuBarExtra
+      icon="menubar-icon.png"
+      isLoading={isLoading}
+      tooltip={device ? `Apple TV: ${device.name}` : "Apple TV Remote"}
+    >
       <MenuBarExtra.Item
         title={device ? "Open Full Remote" : "Set up Apple TV"}
         subtitle={device?.name}
