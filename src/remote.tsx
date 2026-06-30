@@ -36,8 +36,15 @@ export default function Remote() {
     if (establishingRef.current) return establishingRef.current;
 
     const attempt = (async (): Promise<AppleTVConnection | null> => {
-      setStatus((s) => (s === "connected" ? "reconnecting" : "connecting"));
+      // Retire any existing connection up front (the ref is only non-null here
+      // on a manual reconnect over a live connection). Tearing it down *before*
+      // opening the replacement means no in-flight action keeps using a socket
+      // we're about to drop, and a failed reconnect can't leak the old one.
       const previous = connRef.current;
+      connRef.current = null;
+      if (previous) disconnect(previous);
+
+      setStatus((s) => (s === "connected" ? "reconnecting" : "connecting"));
       try {
         const conn = await openConnection();
         if (!mountedRef.current) {
@@ -57,12 +64,9 @@ export default function Remote() {
             setStatus("disconnected");
           }
         });
-        // Manual reconnect over a live connection: retire the one we replaced.
-        if (previous && previous !== conn) disconnect(previous);
         return conn;
       } catch (error) {
         if (mountedRef.current) {
-          connRef.current = null;
           setStatus(error instanceof NotPairedError ? "not-paired" : "disconnected");
           await showErrorToast(error);
         }
