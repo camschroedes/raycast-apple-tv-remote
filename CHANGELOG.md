@@ -4,7 +4,7 @@
 
 - New extension icon featuring the Apple TV Siri Remote
 
-## [Initial Version] - {PR_MERGE_DATE}
+## [Apple TV Remote] - 2026-07-01
 
 - Visual Apple TV remote with a persistent connection — clickable button grid plus a no-modifier keyboard layer (WASD/HJKL, F select, Space play/pause) and ⌥-shortcuts
 - Bonjour discovery + on-screen PIN pairing, with manual IP/port fallback
