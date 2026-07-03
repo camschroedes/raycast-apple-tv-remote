@@ -1,5 +1,9 @@
 # Apple TV Remote Changelog
 
+## [Update store icon] - {PR_MERGE_DATE}
+
+- New extension icon featuring the Apple TV Siri Remote
+
 ## [Initial Version] - {PR_MERGE_DATE}
 
 - Visual Apple TV remote with a persistent connection — clickable button grid plus a no-modifier keyboard layer (WASD/HJKL, F select, Space play/pause) and ⌥-shortcuts
