@@ -1,6 +1,6 @@
-import { LocalStorage } from "@raycast/api";
 import { AppleTVDevice, scan } from "@bharper/atv-js";
 import { NotPairedError } from "./errors";
+import { readJson, writeJson } from "./storage";
 
 const SELECTED_DEVICE_KEY = "atv:device:selected";
 
@@ -11,20 +11,20 @@ export async function scanForDevices(timeoutMs = 5000): Promise<AppleTVDevice[]>
 
 /** Persist the device the user paired with so commands never need to re-scan. */
 export async function saveSelectedDevice(device: AppleTVDevice): Promise<void> {
-  await LocalStorage.setItem(SELECTED_DEVICE_KEY, JSON.stringify(device));
+  await writeJson(SELECTED_DEVICE_KEY, device);
 }
 
 export async function loadSelectedDevice(): Promise<AppleTVDevice> {
-  const raw = await LocalStorage.getItem<string>(SELECTED_DEVICE_KEY);
-  if (!raw) {
+  const device = await readJson<AppleTVDevice>(SELECTED_DEVICE_KEY);
+  if (!device) {
     throw new NotPairedError();
   }
-  return JSON.parse(raw) as AppleTVDevice;
+  return device;
 }
 
 export async function getSelectedDeviceOrNull(): Promise<AppleTVDevice | null> {
   try {
-    return await loadSelectedDevice();
+    return await readJson<AppleTVDevice>(SELECTED_DEVICE_KEY);
   } catch {
     return null;
   }

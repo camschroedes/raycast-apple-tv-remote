@@ -7,8 +7,57 @@ import {
   serializeCredentials,
   startCompanionPairing,
 } from "@bharper/atv-js";
+import { useForm } from "@raycast/utils";
 import { deviceFromManualEntry, saveSelectedDevice, scanForDevices } from "./lib/devices";
 import { saveCredentials } from "./lib/credentials";
+
+interface ManualEntryFormValues {
+  name: string;
+  address: string;
+  port: string;
+}
+
+interface PairFormValues {
+  pin: string;
+}
+
+const pairingChecklist =
+  "Start with the Apple TV awake and on the home screen. Check that Settings > AirPlay and HomeKit > Allow Access is not restricted.\n\nIf the scan found nothing, use Add by IP Address. Companion ports run from 49152 to 49155.";
+
+// tvOS 26 can finish the handshake without ever drawing the PIN (pyatv #2837),
+// and failed attempts back off up to 64 seconds until the device restarts.
+// Both explanations are shared so the branches below stay one line each.
+const noPin =
+  "On tvOS 26 the pairing handshake can finish without the Apple TV ever showing the PIN. That is an Apple bug, not a setup mistake. Restart the Apple TV, then pair again.";
+
+const backoff = "Each failed attempt makes the Apple TV wait longer, up to 64 seconds. Only a restart clears that.";
+
+interface PairingFailure {
+  error?: string;
+  /** The PIN was entered and the Apple TV refused it (as opposed to pairing never starting). */
+  pinRejected?: boolean;
+  noPinAppeared?: boolean;
+}
+
+function pairingHelpText({ error, pinRejected, noPinAppeared }: PairingFailure = {}) {
+  if (pinRejected) {
+    return `The Apple TV rejected the PIN. ${backoff} Restart it before the next attempt.\n\n${pairingChecklist}`;
+  }
+
+  if (error && /timed? ?out|timeout/i.test(error)) {
+    return `Pairing timed out. ${noPin}\n\n${pairingChecklist}`;
+  }
+
+  if (error) {
+    return `Pairing failed: ${error}\n\n${noPin}\n\n${pairingChecklist}`;
+  }
+
+  if (noPinAppeared) {
+    return `${noPin}\n\n${pairingChecklist}`;
+  }
+
+  return `${noPin}\n\n${backoff}\n\n${pairingChecklist}`;
+}
 
 /**
  * Pairing flow: scan → pick a device → 4-digit PIN appears on the TV →
@@ -53,6 +102,7 @@ export default function Setup() {
         actions={
           <ActionPanel>
             <Action.Push title="Add by IP Address" icon={Icon.Plus} target={<ManualEntryForm />} />
+            <Action.Push title="Pairing Help" icon={Icon.QuestionMark} target={<PairingHelpForm />} />
           </ActionPanel>
         }
       />
@@ -79,40 +129,56 @@ export default function Setup() {
 
 function ManualEntryForm() {
   const { push } = useNavigation();
+  const { handleSubmit, itemProps } = useForm<ManualEntryFormValues>({
+    onSubmit(values) {
+      const port = Number(values.port.trim() || "49152");
+      push(<PairForm device={deviceFromManualEntry(values.name.trim(), values.address.trim(), port)} />);
+    },
+    validation: {
+      address: (value) => (!value?.trim() ? "IP address is required." : undefined),
+      port: (value) => {
+        if (!value?.trim()) return;
+        const port = Number(value.trim());
+        return !Number.isInteger(port) || port < 1 || port > 65535
+          ? "Port must be an integer between 1 and 65535."
+          : undefined;
+      },
+    },
+  });
 
   return (
     <Form
       navigationTitle="Add Apple TV by IP"
       actions={
         <ActionPanel>
-          <Action.SubmitForm
-            title="Continue to Pairing"
-            icon={Icon.Link}
-            onSubmit={(values: { name: string; address: string; port: string }) => {
-              if (!values.address.trim()) {
-                showToast({ style: Toast.Style.Failure, title: "IP address is required" });
-                return;
-              }
-              const port = Number(values.port.trim() || "49152");
-              if (!Number.isInteger(port) || port < 1 || port > 65535) {
-                showToast({ style: Toast.Style.Failure, title: "Port must be a number between 1 and 65535" });
-                return;
-              }
-              push(<PairForm device={deviceFromManualEntry(values.name.trim(), values.address.trim(), port)} />);
-            }}
-          />
+          <Action.SubmitForm title="Continue to Pairing" icon={Icon.Link} onSubmit={handleSubmit} />
         </ActionPanel>
       }
     >
       <Form.Description text="Use this if network discovery is blocked (VPNs, segmented Wi-Fi). Find the address on the Apple TV under Settings → Network." />
-      <Form.TextField id="address" title="IP Address" placeholder="192.168.1.42" />
-      <Form.TextField id="name" title="Name" placeholder="Living Room" />
+      <Form.TextField title="IP Address" placeholder="192.168.1.42" {...itemProps.address} />
+      <Form.TextField title="Name" placeholder="Living Room" {...itemProps.name} />
       <Form.TextField
-        id="port"
         title="Companion Port"
         placeholder="49152"
         info="Apple TVs use a port in the 49152–49155 range for the Companion protocol. If pairing fails with the default, try 49153 or 49154."
+        {...itemProps.port}
       />
+    </Form>
+  );
+}
+
+function PairingHelpForm() {
+  return (
+    <Form
+      navigationTitle="Pairing Help"
+      actions={
+        <ActionPanel>
+          <Action.Push title="Add by IP Address" icon={Icon.Plus} target={<ManualEntryForm />} />
+        </ActionPanel>
+      }
+    >
+      <Form.Description text={pairingHelpText()} />
     </Form>
   );
 }
@@ -120,6 +186,14 @@ function ManualEntryForm() {
 function PairForm({ device }: { device: AppleTVDevice }) {
   const [session, setSession] = useState<PairingSession | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pinRejected, setPinRejected] = useState(false);
+  const [noPinAppeared, setNoPinAppeared] = useState(false);
+  const { handleSubmit, itemProps } = useForm<PairFormValues>({
+    onSubmit: submit,
+    validation: {
+      pin: (value) => (!/^\d{4}$/.test(value?.trim() ?? "") ? "PIN must be exactly 4 digits." : undefined),
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -139,10 +213,6 @@ function PairForm({ device }: { device: AppleTVDevice }) {
   async function submit(values: { pin: string }) {
     if (!session) return;
     const pin = values.pin.trim();
-    if (!/^\d{4}$/.test(pin)) {
-      await showToast({ style: Toast.Style.Failure, title: "Enter the 4-digit PIN shown on your TV" });
-      return;
-    }
 
     const toast = await showToast({ style: Toast.Style.Animated, title: "Pairing…" });
     try {
@@ -155,9 +225,14 @@ function PairForm({ device }: { device: AppleTVDevice }) {
       toast.message = "You're ready. Try the Apple TV Remote command.";
       await popToRoot();
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+      // Only a failure at the PIN step means the TV refused the PIN, and the
+      // library's timeout message ("Auth exchange timeout") must not count.
+      setPinRejected(!/timed? ?out|timeout/i.test(message) && /pair|verify|auth|credential|proof|m4/i.test(message));
       toast.style = Toast.Style.Failure;
       toast.title = "Pairing Failed";
-      toast.message = e instanceof Error ? e.message : String(e);
+      toast.message = message;
     }
   }
 
@@ -167,19 +242,21 @@ function PairForm({ device }: { device: AppleTVDevice }) {
       isLoading={!session && !error}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Pair" icon={Icon.Link} onSubmit={submit} />
+          <Action.SubmitForm title="Pair" icon={Icon.Link} onSubmit={handleSubmit} />
+          <Action title="No PIN Appeared" icon={Icon.QuestionMark} onAction={() => setNoPinAppeared(true)} />
         </ActionPanel>
       }
     >
-      {error ? (
-        <Form.Description
-          text={`Could not start pairing: ${error}\n\nMake sure the Apple TV is awake and try again.`}
-        />
-      ) : (
+      {session ? (
         <>
           <Form.Description text={`A 4-digit PIN should now be showing on “${device.name}”.`} />
-          <Form.TextField id="pin" title="PIN" placeholder="1234" autoFocus />
+          <Form.TextField title="PIN" placeholder="1234" autoFocus {...itemProps.pin} />
         </>
+      ) : error ? (
+        <Form.Description text={`Could not start pairing: ${error}`} />
+      ) : null}
+      {(error || noPinAppeared) && (
+        <Form.Description text={pairingHelpText({ error: error ?? undefined, pinRejected, noPinAppeared })} />
       )}
     </Form>
   );

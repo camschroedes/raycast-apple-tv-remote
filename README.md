@@ -2,7 +2,7 @@
 
 Control your Apple TV from Raycast. No Python, no helper apps, nothing to install beyond the extension. It talks to the Apple TV directly over Apple's Companion protocol in pure TypeScript.
 
-![The remote](media/remote.png)
+![The remote](metadata/apple-tv-remote-1.png)
 
 ## Features
 
@@ -13,7 +13,7 @@ Control your Apple TV from Raycast. No Python, no helper apps, nothing to instal
 - **Per-key hotkey commands.** Every remote function is also its own command (most are off by default). Enable the ones you want and give them global hotkeys.
 - **AI tools.** Drive it from Raycast AI, like `@apple-tv-remote pause` or `@apple-tv-remote play Rick and Morty on Netflix` (needs Raycast Pro).
 
-![Every function, one search away](media/commands.png)
+![Every function, one search away](metadata/apple-tv-remote-2.png)
 
 ## Setup
 
@@ -73,12 +73,14 @@ npm run build    # ray build
 
 | Module                                 | Role                                                                                           |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `src/lib/connection.ts`                | Persistent session for the remote view, plus per-command `withConnection()`                    |
+| `src/lib/actions.ts`                   | Every remote action by id, with phrases and HUD text; all commands, tools and views dispatch here |
+| `src/lib/connection.ts`                | `openConnection()` with timeout, plus per-command `withConnection()`                           |
+| `src/lib/use-persistent-connection.ts` | One live session for the remote view: coalesced connects, drop tracking, teardown              |
 | `src/lib/companion-extras.ts`          | Companion payloads ported from pyatv (launch app, app list, power, Control Center, hold, skip) |
-| `src/lib/credentials.ts`, `devices.ts` | Pairing credentials and selected device in LocalStorage                                        |
-| `src/lib/justwatch.ts`                 | Title to deep-link resolution (keyless GraphQL, cached)                                        |
+| `src/lib/apps.ts`                      | Curated app catalog (bundles, providers, deep-link quirks), installed-app cache, launch by name |
 | `src/lib/play-flow.ts`                 | Deep link, then universal-search typing, then app launch                                       |
-| `src/lib/deep-links.ts`                | Curated app and bundle map, plus installed-app cache                                           |
+| `src/lib/justwatch.ts`                 | Title to deep-link resolution (keyless GraphQL, cached)                                        |
+| `src/lib/credentials.ts`, `devices.ts` | Pairing credentials and selected device, via `storage.ts` (JSON in LocalStorage)               |
 | `src/lib/errors.ts`                    | Typed errors turned into actionable toasts                                                     |
 
 ## Credits
