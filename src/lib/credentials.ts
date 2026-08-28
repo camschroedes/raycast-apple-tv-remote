@@ -1,6 +1,6 @@
-import { LocalStorage } from "@raycast/api";
 import { Credentials } from "@bharper/atv-js";
 import { NotPairedError } from "./errors";
+import { readJson, writeJson } from "./storage";
 
 // Pairing credentials are machine-generated key material (not user-entered
 // secrets), so they live in Raycast's encrypted LocalStorage database rather
@@ -8,13 +8,13 @@ import { NotPairedError } from "./errors";
 const credsKey = (deviceId: string) => `atv:creds:${deviceId}`;
 
 export async function saveCredentials(deviceId: string, creds: Credentials): Promise<void> {
-  await LocalStorage.setItem(credsKey(deviceId), JSON.stringify(creds));
+  await writeJson(credsKey(deviceId), creds);
 }
 
 export async function loadCredentials(deviceId: string): Promise<Credentials> {
-  const raw = await LocalStorage.getItem<string>(credsKey(deviceId));
-  if (!raw) {
+  const creds = await readJson<Credentials>(credsKey(deviceId));
+  if (!creds) {
     throw new NotPairedError();
   }
-  return JSON.parse(raw) as Credentials;
+  return creds;
 }

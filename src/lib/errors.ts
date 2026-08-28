@@ -8,6 +8,14 @@ export class NotPairedError extends Error {
   }
 }
 
+/** The Apple TV answered, and said no (an error frame, e.g. a launch it will not perform). */
+export class RefusedError extends Error {
+  constructor(identifier: string, detail: string) {
+    super(`The Apple TV refused ${identifier} (${detail})`);
+    this.name = "RefusedError";
+  }
+}
+
 /** The Apple TV could not be reached (offline, network change, timeout). */
 export class UnreachableError extends Error {
   constructor(deviceName: string) {

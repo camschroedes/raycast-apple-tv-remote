@@ -1,8 +1,9 @@
 import { AppleTVConnection, RemoteKey, getKeyboardFocusState, sendKey, setText } from "@bharper/atv-js";
 import { getPreferenceValues } from "@raycast/api";
 import { withConnection } from "./connection";
-import { launchApp } from "./companion-extras";
-import { resolveAppName } from "./deep-links";
+import { delay, launchApp } from "./companion-extras";
+import { RefusedError } from "./errors";
+import { appForProvider, resolveAppName } from "./apps";
 import { offerMatchesHint, pickOffer, searchTitle } from "./justwatch";
 
 /**
@@ -19,38 +20,6 @@ import { offerMatchesHint, pickOffer, searchTitle } from "./justwatch";
  */
 
 const TV_SEARCH_BUNDLE = "com.apple.TVSearch";
-
-/** Providers whose web URLs don't deep-link on tvOS, route via universal search. */
-const BROKEN_DEEP_LINK_PROVIDERS = new Set(["netflix", "netflixbasicwithads"]);
-
-const PROVIDER_BUNDLES: Record<string, string> = {
-  netflix: "com.netflix.Netflix",
-  netflixbasicwithads: "com.netflix.Netflix",
-  disneyplus: "com.disney.disneyplus",
-  max: "com.wbd.stream",
-  hbomax: "com.wbd.stream",
-  appletvplus: "com.apple.TVWatchList",
-  itunes: "com.apple.TVWatchList",
-  hulu: "com.hulu.plus",
-  amazonprimevideo: "com.amazon.aiv.AIVApp",
-  amazonprime: "com.amazon.aiv.AIVApp",
-  youtube: "com.google.ios.youtube",
-};
-
-/** Per-app URL fixups for tvOS routing quirks. */
-function adaptUrlForTvos(url: string, technicalName: string): string {
-  if (technicalName === "youtube") {
-    // The scheme form routes reliably on tvOS; plain https is flaky.
-    const id = url.match(/[?&]v=([\w-]+)/)?.[1];
-    if (id) return `youtube://www.youtube.com/watch?v=${id}`;
-  }
-  if (technicalName === "appletvplus" || technicalName === "itunes") {
-    return url.includes("?") ? `${url}&action=play` : `${url}?action=play`;
-  }
-  return url;
-}
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // tvOS coalesces rapid keypresses into long-presses (pyatv #792), keep gaps generous.
 const KEY_GAP_MS = 800;
@@ -154,6 +123,7 @@ export async function playContent(title: string, appHint?: string): Promise<Play
   }
 
   const offer = resolvedTitle ? pickOffer(resolvedTitle, appHint) : null;
+  const app = offer ? appForProvider(offer.provider.technicalName) : undefined;
   const displayTitle = resolvedTitle?.title ?? title;
 
   // Never silently open a different service than the one the user named,
@@ -162,10 +132,16 @@ export async function playContent(title: string, appHint?: string): Promise<Play
   const honorsHint = !appHint || (offer !== null && offerMatchesHint(offer, appHint));
 
   // 2. Direct deep link when the provider supports it on tvOS.
-  if (offer && honorsHint && !BROKEN_DEEP_LINK_PROVIDERS.has(offer.provider.technicalName)) {
-    const url = adaptUrlForTvos(offer.url, offer.provider.technicalName);
-    await withConnection((conn) => launchApp(conn, url));
-    return { ok: true, message: `Opening ${displayTitle} in ${offer.provider.clearName}` };
+  if (offer && honorsHint && app?.deepLinks !== false) {
+    const url = app?.adaptUrl?.(offer.url) ?? offer.url;
+    try {
+      await withConnection((conn) => launchApp(conn, url));
+      return { ok: true, message: `Opening ${displayTitle} in ${offer.provider.clearName}` };
+    } catch (error) {
+      // A refused deep link falls through to universal search rather than
+      // reporting a launch that did not happen. Anything else is a real failure.
+      if (!(error instanceof RefusedError)) throw error;
+    }
   }
 
   // 3. Universal Search flow (Netflix & friends, or unresolved titles).
@@ -189,9 +165,8 @@ export async function playContent(title: string, appHint?: string): Promise<Play
   }
 
   // 4. Last resort: open the most plausible app (the user's named app wins).
-  const bundleFromOffer = offer && honorsHint ? PROVIDER_BUNDLES[offer.provider.technicalName] : undefined;
   const fromHint = appHint ? resolveAppName(appHint) : null;
-  const bundleId = fromHint?.bundleId ?? bundleFromOffer;
+  const bundleId = fromHint?.bundleId ?? (honorsHint ? app?.bundleId : undefined);
   if (bundleId) {
     await withConnection((conn) => launchApp(conn, bundleId));
     const appName = offer?.provider.clearName ?? fromHint?.name ?? "the app";

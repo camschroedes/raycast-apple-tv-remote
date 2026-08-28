@@ -1,5 +1,14 @@
 # Apple TV Remote Changelog
 
+## [App list on tvOS 26, honest failures, pairing help] - {PR_MERGE_DATE}
+
+- The installed-app list works again on tvOS 26. The extension now opens a TV Remote Client session on connect, which tvOS requires before it will answer the app-list query. Launch Apple TV App shows everything installed, and "open <app>" resolves against it
+- A refused launch is now reported as a failure instead of "Launched". tvOS answers a rejected request with an error frame that previously read as success. Deep links that the TV refuses fall back to universal search
+- Pairing help on the setup screen: what to do when no PIN appears (restart the Apple TV; a tvOS 26 bug can finish the handshake without drawing it) and why repeated failed attempts should wait for a restart
+- Inline validation on the pairing and manual-IP forms
+- Menu bar buttons report a failure instead of doing nothing when the Ask Apple TV command is unavailable. Ask Apple TV failures show as toasts
+- Fix: a very short app name could launch an unrelated app whose name contained it
+
 ## [Menu bar icon] - {PR_MERGE_DATE}
 
 - New menu bar icon: an Apple TV remote that adapts to light and dark

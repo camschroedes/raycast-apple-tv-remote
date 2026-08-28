@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { LocalStorage, getPreferenceValues } from "@raycast/api";
+import { getPreferenceValues } from "@raycast/api";
+import { withCache } from "@raycast/utils";
 
 const execFileAsync = promisify(execFile);
 
@@ -72,72 +73,72 @@ async function country(): Promise<string> {
   return detectedCountry;
 }
 
-export async function searchTitle(query: string): Promise<ResolvedTitle | null> {
-  const region = await country();
-  const cacheKey = `atv:jw:${region}:${query.toLowerCase()}`;
-  const cached = await LocalStorage.getItem<string>(cacheKey);
-  if (cached) {
-    const { value, at } = JSON.parse(cached) as { value: ResolvedTitle | null; at: number };
-    if (Date.now() - at < CACHE_TTL_MS) return value;
-  }
+// Region is an explicit argument so it lands in withCache's key: results are
+// per-country, and a cache shared across regions would hand back the wrong
+// streaming provider.
+const fetchTitle = withCache(
+  async (query: string, region: string): Promise<ResolvedTitle | null> => {
+    const response = await fetch(GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "GetSearchTitles",
+        variables: {
+          first: 3,
+          searchTitlesFilter: { searchQuery: query },
+          country: region,
+          language: "en",
+          filter: { bestOnly: true },
+        },
+        query: SEARCH_QUERY,
+      }),
+    });
+    if (!response.ok) throw new Error(`JustWatch lookup failed (HTTP ${response.status})`);
 
-  const response = await fetch(GRAPHQL_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "GetSearchTitles",
-      variables: {
-        first: 3,
-        searchTitlesFilter: { searchQuery: query },
-        country: region,
-        language: "en",
-        filter: { bestOnly: true },
-      },
-      query: SEARCH_QUERY,
-    }),
-  });
-  if (!response.ok) throw new Error(`JustWatch lookup failed (HTTP ${response.status})`);
-
-  const json = (await response.json()) as {
-    data?: {
-      popularTitles?: {
-        edges?: {
-          node: {
-            objectType: string;
-            content?: { title?: string; originalReleaseYear?: number };
-            offers?: {
-              monetizationType?: string;
-              standardWebURL?: string;
-              package?: { technicalName?: string; shortName?: string; clearName?: string };
-            }[];
-          };
-        }[];
+    const json = (await response.json()) as {
+      data?: {
+        popularTitles?: {
+          edges?: {
+            node: {
+              objectType: string;
+              content?: { title?: string; originalReleaseYear?: number };
+              offers?: {
+                monetizationType?: string;
+                standardWebURL?: string;
+                package?: { technicalName?: string; shortName?: string; clearName?: string };
+              }[];
+            };
+          }[];
+        };
       };
     };
-  };
 
-  const node = json.data?.popularTitles?.edges?.[0]?.node;
-  const value: ResolvedTitle | null = node
-    ? {
-        title: node.content?.title ?? query,
-        year: node.content?.originalReleaseYear ?? null,
-        type: node.objectType,
-        offers: (node.offers ?? [])
-          .filter((o) => o.standardWebURL && o.package?.technicalName)
-          .map((o) => ({
-            url: o.standardWebURL as string,
-            monetizationType: o.monetizationType ?? "UNKNOWN",
-            provider: {
-              technicalName: o.package?.technicalName ?? "",
-              shortName: o.package?.shortName ?? "",
-              clearName: o.package?.clearName ?? "",
-            },
-          })),
-      }
-    : null;
+    const node = json.data?.popularTitles?.edges?.[0]?.node;
+    if (!node) return null;
+    return {
+      title: node.content?.title ?? "",
+      year: node.content?.originalReleaseYear ?? null,
+      type: node.objectType,
+      offers: (node.offers ?? [])
+        .filter((o) => o.standardWebURL && o.package?.technicalName)
+        .map((o) => ({
+          url: o.standardWebURL as string,
+          monetizationType: o.monetizationType ?? "UNKNOWN",
+          provider: {
+            technicalName: o.package?.technicalName ?? "",
+            shortName: o.package?.shortName ?? "",
+            clearName: o.package?.clearName ?? "",
+          },
+        })),
+    };
+  },
+  { maxAge: CACHE_TTL_MS },
+);
 
-  await LocalStorage.setItem(cacheKey, JSON.stringify({ value, at: Date.now() }));
-  return value;
+export async function searchTitle(query: string): Promise<ResolvedTitle | null> {
+  // Lowercased so the cache key ignores casing; the search itself is case-insensitive.
+  const resolved = await fetchTitle(query.trim().toLowerCase(), await country());
+  return resolved && { ...resolved, title: resolved.title || query.trim() };
 }
 
 /** Whether an offer belongs to the provider the user explicitly asked for. */

@@ -49,8 +49,8 @@ export async function openConnection(): Promise<AppleTVConnection> {
 
 /**
  * Run a single action against the Apple TV with a short-lived connection.
- * Used by no-view commands, the menu bar, and AI tools, the persistent-
- * connection path for the remote view lives in `remote.tsx` itself.
+ * Used by no-view commands, the menu bar, and AI tools; the remote view keeps
+ * one live session instead via `usePersistentConnection`.
  */
 export async function withConnection<T>(fn: (conn: AppleTVConnection) => Promise<T>): Promise<T> {
   const conn = await openConnection();
